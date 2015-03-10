@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using Microsoft.Scripting.Ast;
@@ -35,11 +35,11 @@ using Microsoft.Scripting;
 using Microsoft.Scripting.Math;
 using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
+using Microsoft.Scripting.Actions.Calls;
 using IronRuby.Runtime.Conversions;
 
 namespace IronRuby.Runtime {
     using EvalEntryPointDelegate = Func<RubyScope, object, RubyModule, Proc, object>;
-    using Microsoft.Scripting.Actions.Calls;
 
     public static class RubyUtils {
         #region Objects
@@ -964,75 +964,10 @@ namespace IronRuby.Runtime {
         #endregion
 
         #region Object Construction
-
-        private static readonly Type[] _ccTypes1 = new Type[] { typeof(RubyClass) };
-        private static readonly Type[] _ccTypes2 = new Type[] { typeof(RubyContext) };
-#if !SILVERLIGHT // serialization
-        private static readonly Type[] _serializableTypeSignature = new Type[] { typeof(SerializationInfo), typeof(StreamingContext) };
-#endif
-
+        
+        // TODO remove
         public static readonly string SerializationInfoClassKey = "#immediateClass";
-
-        public static object/*!*/ CreateObject(RubyClass/*!*/ theclass, IEnumerable<KeyValuePair<string, object>>/*!*/ attributes) {
-            Assert.NotNull(theclass, attributes);
-
-            Type baseType = theclass.GetUnderlyingSystemType();
-            object obj;
-            if (typeof(ISerializable).IsAssignableFrom(baseType)) {
-#if !SILVERLIGHT // serialization
-                BindingFlags bindingFlags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance;
-                ConstructorInfo ci = baseType.GetConstructor(bindingFlags, null, _serializableTypeSignature, null);
-                if (ci == null) {
-#endif
-                string message = String.Format("Class {0} does not have a valid deserializing constructor", baseType.FullName);
-                    throw new NotSupportedException(message);
-#if !SILVERLIGHT // serialization
-                }
-                SerializationInfo info = new SerializationInfo(baseType, new FormatterConverter());
-                info.AddValue(SerializationInfoClassKey, theclass);
-                foreach (var pair in attributes) {
-                    info.AddValue(pair.Key, pair.Value);
-                }
-                obj = ci.Invoke(new object[2] { info, new StreamingContext(StreamingContextStates.Other, theclass) });
-#endif
-            } else {
-                obj = CreateObject(theclass);
-                foreach (var pair in attributes) {
-                    theclass.Context.SetInstanceVariable(obj, pair.Key, pair.Value);
-                }
-            }
-            return obj;
-        }
-
-        private static bool IsAvailable(MethodBase method) {
-            return method != null && !method.IsPrivate && !method.IsAssembly && !method.IsFamilyAndAssembly;
-        }
-
-        // TODO: remove
-        public static object/*!*/ CreateObject(RubyClass/*!*/ theClass) {
-            Assert.NotNull(theClass);
-
-            Type baseType = theClass.GetUnderlyingSystemType();
-            if (baseType == typeof(RubyStruct)) {
-                return RubyStruct.Create(theClass);
-            }
-
-            object result;
-            BindingFlags bindingFlags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance;
-            ConstructorInfo ci;
-            if (IsAvailable(ci = baseType.GetConstructor(bindingFlags, null, Type.EmptyTypes, null))) {
-                result = ci.Invoke(new object[0] { });
-            } else if (IsAvailable(ci = baseType.GetConstructor(bindingFlags, null, _ccTypes1, null))) {
-                result = ci.Invoke(new object[1] { theClass });
-            } else if (IsAvailable(ci = baseType.GetConstructor(bindingFlags, null, _ccTypes2, null))) {
-                result = ci.Invoke(new object[1] { theClass.Context });
-            } else {
-                string message = String.Format("Class {0} does not have a valid constructor", theClass.Name);
-                throw new NotSupportedException(message);
-            }
-            return result;
-        }
-
+        
         #endregion
 
         #region Call Site Storage Extensions
@@ -1070,17 +1005,8 @@ namespace IronRuby.Runtime {
 
         #region Exceptions
 
-#if SILVERLIGHT // Thread.ExceptionState, Thread.Abort(stateInfo)
-        public static Exception GetVisibleException(Exception e) { return e; }
-
-        public static void ExitThread(Thread/*!*/ thread) {
-            thread.Abort();
-        }
-
-        public static bool IsRubyThreadExit(Exception e) {
-            return e is ThreadAbortException;
-        }
-#else
+#if FEATURE_THREAD
+#if FEATURE_EXCEPTION_STATE
         /// <summary>
         /// Thread#raise is implemented on top of System.Threading.Thread.ThreadAbort, and squirreling
         /// the Ruby exception expected by the use in ThreadAbortException.ExceptionState.
@@ -1136,10 +1062,21 @@ namespace IronRuby.Runtime {
                 }
             }
             return e;
+        }   
+#else
+        public static Exception GetVisibleException(Exception e) { return e; }
+
+        public static void ExitThread(Thread/*!*/ thread) {
+            thread.Abort();
         }
 
+        public static bool IsRubyThreadExit(Exception e) {
+            return e is ThreadAbortException;
+        }
 #endif
-
+#else
+        public static Exception GetVisibleException(Exception e) { return e; }
+#endif
         #endregion
 
         #region Paths
@@ -1162,8 +1099,16 @@ namespace IronRuby.Runtime {
                 basePath + "/" + path;
         }
 
+#if WIN8
+        public static char DirectorySeparatorChar = '\\';
+#else
+        public static char DirectorySeparatorChar = Path.DirectorySeparatorChar;
+#endif
+
         // TODO: virtualize via PAL
-        public static bool FileSystemUsesDriveLetters { get { return Path.DirectorySeparatorChar == '\\'; } }
+        public static bool FileSystemUsesDriveLetters { 
+            get { return DirectorySeparatorChar == '\\'; } 
+        }
 
         // Is path something like "/foo/bar" (or "c:/foo/bar" on Windows)
         // We need this instead of Path.IsPathRooted since we need to be able to deal with Unix-style path names even on Windows
@@ -1177,6 +1122,34 @@ namespace IronRuby.Runtime {
             }
 
             return path[0] == '/';
+        }
+
+        public static bool IsRelativeToCurrentDirectory(string path) {
+            if (String.IsNullOrEmpty(path)) {
+                return false;
+            }
+
+            if (path.Length == 1) {
+                return path[0] == '.';
+            }
+
+            if (path[0] != '.') {
+                return false;
+            }
+
+            if (path[1] == '/' || path[1] == '\\') {
+                return true;
+            }
+
+            if (path.Length == 2) {
+                return path[1] == '.';
+            }
+
+            if (path[2] == '/' || path[2] == '\\') {
+                return true;
+            }
+
+            return false;
         }
 
         // Is path something like "c:/foo/bar" (on Windows)
@@ -1260,14 +1233,18 @@ namespace IronRuby.Runtime {
                         // This will always succeed with a non-null string, but it can fail
                         // if the Personal folder was renamed or deleted. In this case it returns
                         // an empty string.
+#if FEATURE_FILESYSTEM // TODO: virtualize via PAL?
                         result = Environment.GetFolderPath(Environment.SpecialFolder.Personal);
+#else
+                        result = null;
+#endif
                     } else {
                         result = userEnvironment;
                     }
                 } else if (homeDrive == null) {
                     result = homePath;
                 } else if (homePath == null) {
-                    result = homeDrive + Path.DirectorySeparatorChar;
+                    result = homeDrive + RubyUtils.DirectorySeparatorChar;
                 } else {
                     result = homeDrive + homePath;
                 }
@@ -1441,7 +1418,7 @@ namespace IronRuby.Runtime {
                     }
                     return String.Empty;
                 }
-                if (c == Path.DirectorySeparatorChar || c == Path.AltDirectorySeparatorChar || c == Path.VolumeSeparatorChar) {
+                if (c == '\\' || c == '/' || c == ':') {
                     break;
                 }
             }

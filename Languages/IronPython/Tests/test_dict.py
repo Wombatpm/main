@@ -954,7 +954,27 @@ def test_update():
             raise e
         
         AreEqual(start_dict, expected)
-        
+
+def test_update_argnames():
+    expected = {"b": 1}
+    result = {}
+    result.update(b=1)
+
+    AreEqual(result, expected)
+
+    expected = {"other": 1}
+    result = {}
+    result.update(other=1)
+
+    AreEqual(result, expected)
+
+    expected = {"other": 1, "otherArgs": 2}
+    result = {}
+    result.update({"other": 1}, otherArgs=2)
+
+    AreEqual(result, expected)
+
+def test_update_no_setitem():
     # update doesn't call __setitem__
     class mydict(dict):
         def __init__(self, *args, **kwargs):
@@ -1109,5 +1129,85 @@ def test_missing():
         AreEqual(x.__eq__(f), False)
         AreEqual(f.__eq__(x), False)
     
+
+def test_cp29914():
+	AreEqual(dict(o=42), {'o':42})
+
+def test_dict_comp():
+    pass
     
+def test_dict_comp():
+    AreEqual({locals()['x'] : locals()['x'] for x in (2,3,4)}, {2:2, 3:3, 4:4})
+    
+    x = 100
+    {x:x for x in (2,3,4)}
+    AreEqual(x, 100)
+    
+    class C:
+        {x:x for x in (2,3,4)}
+    
+    AreEqual(hasattr(C, 'x'), False)
+    
+    class C:
+        abc = {locals()['x']:locals()['x'] for x in (2,3,4)}
+    
+    AreEqual(C.abc, {2:2,3:3,4:4})
+
+    d = {}
+    exec compile("abc = {locals()['x']:locals()['x'] for x in (2,3,4)}", 'exec', 'exec') in d, d
+    AreEqual(d['abc'], {2:2,3:3,4:4})
+    
+    d = {'y':42}
+    exec compile("abc = {y:y for x in (2,3,4)}", 'exec', 'exec') in d, d
+    AreEqual(d['abc'], {42:42})
+
+    d = {'y':42, 't':(2,3,42)}
+    exec compile("abc = {y:y for x in t if x == y}", 'exec', 'exec') in d, d
+    AreEqual(d['abc'], {42:42})
+
+    t = (2,3,4)
+    v = 2
+    abc = {v:v for x in t}
+    AreEqual(abc, {2:2})
+
+    abc = {x:x for x in t if x == v}
+    AreEqual(abc, {2:2})
+    
+    def f():
+        abc = {x:x for x in t if x == v}
+        AreEqual(abc, {2:2})
+        
+    f()
+    
+    def f():
+        abc = {v:v for x in t}
+        AreEqual(abc, {2:2})
+        
+        
+    class C:
+        abc = {v:v for x in t}
+        AreEqual(abc, {2:2})
+        
+    class C:
+        abc = {x:x for x in t if x == v}
+        AreEqual(abc, {2:2})
+
+def test_cp32527():
+    '''test for duplicate key in dict under specific hash value conditions'''
+    d = {'1': 1, '2': 1, '3': 1, 'a7': 1, 'a8': 1}
+    #d now has 7 buckets internally, and computed hash for a7 and a8 keys will land on same starting bucket index
+    
+    #recycle the a7 bucket
+    d.pop('a7')
+    
+    #attempt to update the a8 bucket, which now comes after the recycled a7
+    d['a8'] = 5
+    
+    #if working properly, there will now be a recycled bucket (former home of a7) and a single a8 bucket
+    #if not working properly, there will instead be two a8 buckets
+    expected = 1
+    actual = d.keys().count('a8')
+    AreEqual(actual, expected)
+
+
 run_test(__name__)

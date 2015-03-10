@@ -6,11 +6,6 @@
 
 """
 
-from test import test_support
-if test_support.due_to_ironpython_bug("http://tkbgitvstfat01:8080/WorkItemTracking/WorkItem.aspx?artifactMoniker=303481"):
-    import sys
-    sys.exit(0)
-
 import sys
 import unittest
 import hashlib
@@ -27,10 +22,9 @@ class UnicodeMethodsTest(unittest.TestCase):
     # update this, if the database changes
     expectedchecksum = '4504dffd035baea02c5b9de82bebc3d65e0e0baf'
 
+    @unittest.skipIf(sys.platform == 'cli', 'Too slow')
     def test_method_checksum(self):
         h = hashlib.sha1()
-        if test_support.due_to_ironpython_bug("http://tkbgitvstfat01:8080/WorkItemTracking/WorkItem.aspx?artifactMoniker=321875"):
-            return
         for i in range(0x10000):
             char = unichr(i)
             data = [
@@ -88,6 +82,7 @@ class UnicodeFunctionsTest(UnicodeDatabaseTest):
     # update this, if the database changes
     expectedchecksum = '6ccf1b1a36460d2694f9b0b0f0324942fe70ede6'
 
+    @unittest.skipIf(sys.platform == 'cli', 'Too slow')
     def test_function_checksum(self):
         data = []
         h = hashlib.sha1()
@@ -195,8 +190,21 @@ class UnicodeFunctionsTest(UnicodeDatabaseTest):
 
     def test_pr29(self):
         # http://www.unicode.org/review/pr-29.html
-        for text in (u"\u0b47\u0300\u0b3e", u"\u1100\u0300\u1161"):
+        # See issues #1054943 and #10254.
+        composed = (u"\u0b47\u0300\u0b3e", u"\u1100\u0300\u1161",
+                    u'Li\u030dt-s\u1e73\u0301',
+                    u'\u092e\u093e\u0930\u094d\u0915 \u091c\u093c'
+                    + u'\u0941\u0915\u0947\u0930\u092c\u0930\u094d\u0917',
+                    u'\u0915\u093f\u0930\u094d\u0917\u093f\u091c\u093c'
+                    + 'u\u0938\u094d\u0924\u093e\u0928')
+        for text in composed:
             self.assertEqual(self.db.normalize('NFC', text), text)
+
+    def test_issue10254(self):
+        # Crash reported in #10254
+        a = u'C\u0338' * 20  + u'C\u0327'
+        b = u'C\u0338' * 20  + u'\xC7'
+        self.assertEqual(self.db.normalize('NFC', a), b)
 
     def test_east_asian_width(self):
         eaw = self.db.east_asian_width
@@ -213,6 +221,7 @@ class UnicodeFunctionsTest(UnicodeDatabaseTest):
 
 class UnicodeMiscTest(UnicodeDatabaseTest):
 
+    @unittest.skipIf(sys.platform == 'cli', 'CPython impl detail')
     def test_failed_import_during_compiling(self):
         # Issue 4367
         # Decoding \N escapes requires the unicodedata module. If it can't be
@@ -221,14 +230,14 @@ class UnicodeMiscTest(UnicodeDatabaseTest):
         # This program should raise a SyntaxError in the eval.
         code = "import sys;" \
             "sys.modules['unicodedata'] = None;" \
-            """eval("u'\N{SOFT HYPHEN}'")"""
+            """eval("u'\\N{SOFT HYPHEN}'")"""
         args = [sys.executable, "-c", code]
         # We use a subprocess because the unicodedata module may already have
         # been loaded in this process.
         popen = subprocess.Popen(args, stderr=subprocess.PIPE)
         popen.wait()
         self.assertEqual(popen.returncode, 1)
-        error = "SyntaxError: (unicode error) \N escapes not supported " \
+        error = "SyntaxError: (unicode error) \\N escapes not supported " \
             "(can't load unicodedata module)"
         self.assertIn(error, popen.stderr.read())
 
@@ -259,7 +268,7 @@ class UnicodeMiscTest(UnicodeDatabaseTest):
         self.assertTrue(count >= 10) # should have tested at least the ASCII digits
 
     def test_bug_1704793(self):
-        self.assertEquals(self.db.lookup("GOTHIC LETTER FAIHU"), u'\U00010346')
+        self.assertEqual(self.db.lookup("GOTHIC LETTER FAIHU"), u'\U00010346')
 
     def test_ucd_510(self):
         import unicodedata

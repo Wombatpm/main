@@ -12,9 +12,11 @@
  *
  *
  * ***************************************************************************/
-
-#if !CLR2
+#if FEATURE_REFEMIT
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
+#else
+using Microsoft.Scripting.Ast;
 #endif
 
 using System;
@@ -27,7 +29,6 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
-using Microsoft.Scripting.Ast;
 using AstUtils = Microsoft.Scripting.Ast.Utils;
 
 namespace Microsoft.Scripting.Generation {
@@ -35,7 +36,7 @@ namespace Microsoft.Scripting.Generation {
     /// <summary>
     /// Serializes constants and dynamic sites so the code can be saved to disk
     /// </summary>
-    internal sealed class ToDiskRewriter : ExpressionVisitor {
+    internal sealed class ToDiskRewriter : DynamicExpressionVisitor {
         private static int _uniqueNameId;
         private List<Expression> _constants;
         private Dictionary<object, Expression> _constantCache;
@@ -74,11 +75,26 @@ namespace Microsoft.Scripting.Generation {
                     }
 
                     // Add the consant pool variable to the top lambda
-                    body = AstUtils.AddScopedVariable(
-                        body,
+                    // We first create the array and then assign into it so that we can refer to the
+                    // array and read values out that have already been created.
+                    ReadOnlyCollectionBuilder<Expression> assigns = new ReadOnlyCollectionBuilder<Expression>(_constants.Count + 2);
+                    assigns.Add(Expression.Assign(
                         _constantPool,
-                        Expression.NewArrayInit(typeof(object), _constants)
-                    );
+                        Expression.NewArrayBounds(typeof(object), Expression.Constant(_constants.Count))
+                    ));
+
+                    // emit inner most constants first so they're available for outer most constants to consume
+                    for (int i = _constants.Count - 1; i >= 0 ; i--) {
+                        assigns.Add(
+                            Expression.Assign(
+                                Expression.ArrayAccess(_constantPool, Expression.Constant(i)),
+                                _constants[i]
+                            )
+                        );
+                    }
+                    assigns.Add(body);
+
+                    body = Expression.Block(new[] { _constantPool }, assigns);
                 }
 
                 // Rewrite the lambda
@@ -131,7 +147,7 @@ namespace Microsoft.Scripting.Generation {
             var strings = node.Value as string[];
             if (strings != null) {
                 if (strings.Length == 0) {
-                    return Expression.Field(null, typeof(ArrayUtils).GetField("EmptyStrings"));
+                    return Expression.Field(null, typeof(ArrayUtils).GetDeclaredField("EmptyStrings"));
                 }
 
                 _constants.Add(
@@ -158,7 +174,7 @@ namespace Microsoft.Scripting.Generation {
         protected override Expression VisitDynamic(DynamicExpression node) {
             Type delegateType;
             if (RewriteDelegate(node.DelegateType, out delegateType)) {
-                node = Expression.MakeDynamic(delegateType, node.Binder, node.Arguments);
+                node = DynamicExpression.MakeDynamic(delegateType, node.Binder, node.Arguments);
             }
 
             // Reduce dynamic expression so that the lambda can be emitted as a non-dynamic method.
@@ -195,17 +211,31 @@ namespace Microsoft.Scripting.Generation {
             // We need to replace a transient delegateType with one stored in
             // the assembly we're saving to disk.
             //
+            // When the delegateType is a function that accepts 14 or more parameters,
+            // it is transient, but it is an InternalModuleBuilder, not a ModuleBuilder
+            // so some reflection is done here to determine if a delegateType is an
+            // InternalModuleBuilder and if it is, if it is transient.
+            //
             // One complication:
             // SaveAssemblies mode prevents us from detecting the module as
             // transient. If that option is turned on, always replace delegates
             // that live in another AssemblyBuilder
-
+#if WIN8 // TODO:
+            return true;
+#else
             var module = delegateType.Module as ModuleBuilder;
-            if (module == null) {
-                return false;
-            }
 
-            if (module.IsTransient()) {
+            if (module == null) {
+                if (delegateType.Module.GetType() == typeof(ModuleBuilder).Assembly.GetType("System.Reflection.Emit.InternalModuleBuilder")) {
+                    if ((bool)delegateType.Module.GetType().InvokeMember("IsTransientInternal", BindingFlags.InvokeMethod | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance, null, delegateType.Module, null)) {
+                        return true;
+                    }
+                }
+                else {
+                    return false;
+                }
+            }
+            else if (module.IsTransient()) {
                 return true;
             }
 
@@ -214,6 +244,7 @@ namespace Microsoft.Scripting.Generation {
             }
 
             return false;
+#endif
         }
 
         private Expression RewriteCallSite(CallSite site) {
@@ -248,3 +279,4 @@ namespace Microsoft.Scripting.Generation {
         }
     }
 }
+#endif

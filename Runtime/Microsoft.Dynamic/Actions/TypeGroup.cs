@@ -13,19 +13,22 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using Microsoft.Scripting.Ast;
+#endif
+#if CLR45
+using System.Collections.ObjectModel;
 #endif
 
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using Microsoft.Scripting.Utils;
+using System.Linq;
 using System.Text;
-using Microsoft.Contracts;
 using Microsoft.Scripting.Runtime;
+using Microsoft.Scripting.Utils;
 
 namespace Microsoft.Scripting.Actions {
     /// <summary>
@@ -70,7 +73,6 @@ namespace Microsoft.Scripting.Actions {
             _name = existingTypes.Name;
         }
 
-        [Confined]
         public override string ToString() {
             StringBuilder repr = new StringBuilder(base.ToString());
             repr.Append(":" + Name + "(");
@@ -89,13 +91,12 @@ namespace Microsoft.Scripting.Actions {
         }
 
         public override IList<string> GetMemberNames() {
-            Dictionary<string, string> members = new Dictionary<string, string>();
-            foreach (Type t in this.Types) {
-                CollectMembers(members, t);
+            HashSet<string> members = new HashSet<string>();
+            foreach (Type type in this.Types) {
+                GetMemberNames(type, members);
             }
 
-            return MembersToList(members);
-
+            return members.ToArray();
         }
 
         public TypeTracker GetTypeForArity(int arity) {
@@ -103,7 +104,7 @@ namespace Microsoft.Scripting.Actions {
             if (!_typesByArity.TryGetValue(arity, out typeWithMatchingArity)) {
                 return null;
             }
-            return ReflectionCache.GetTypeTracker(typeWithMatchingArity);
+            return TypeTracker.GetTypeTracker(typeWithMatchingArity);
         }
 
         /// <param name="existingTypeEntity">The merged list so far. Could be null</param>
@@ -136,27 +137,22 @@ namespace Microsoft.Scripting.Actions {
 
         /// <summary> Gets the arity of generic parameters</summary>
         private static int GetGenericArity(Type type) {
-            if (!type.IsGenericType) {
+            if (!type.IsGenericType()) {
                 return 0;
             }
 
-            Debug.Assert(type.IsGenericTypeDefinition);
+            Debug.Assert(type.IsGenericTypeDefinition());
             return type.GetGenericArguments().Length;
         }
 
-        /// <summary>
-        /// This will throw an exception if all the colliding types are generic
-        /// </summary>
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1065:DoNotRaiseExceptionsInUnexpectedLocations")] // TODO: fix
-        public Type NonGenericType {
-            get {
-                Type nonGenericType;
-                if (TryGetNonGenericType(out nonGenericType)) {
-                    return nonGenericType;
-                }
-
-                throw Error.NonGenericWithGenericGroup(Name);
+        /// <exception cref="TypeLoadException">No non-generic type is represented by this group.</exception>
+        public Type GetNonGenericType() {
+            Type nonGenericType;
+            if (TryGetNonGenericType(out nonGenericType)) {
+                return nonGenericType;
             }
+
+            throw Error.NonGenericWithGenericGroup(Name);
         }
 
         public bool TryGetNonGenericType(out Type nonGenericType) {
@@ -215,7 +211,7 @@ namespace Microsoft.Scripting.Actions {
         /// an exception if all types in the TypeGroup are generic
         /// </summary>
         public override Type Type {
-            get { return NonGenericType; }
+            get { return GetNonGenericType(); }
         }
 
         public override bool IsGenericType {
@@ -227,7 +223,7 @@ namespace Microsoft.Scripting.Actions {
         /// an exception if all types in the TypeGroup are generic
         /// </summary>
         public override bool IsPublic {
-            get { return NonGenericType.IsPublic; }
+            get { return GetNonGenericType().IsPublic(); }
         }
 
         #endregion

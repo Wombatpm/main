@@ -13,10 +13,14 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using Microsoft.Scripting.Ast;
+#endif
+
+#if !FEATURE_REMOTING
+using MarshalByRefObject = System.Object;
 #endif
 
 using System;
@@ -108,6 +112,8 @@ namespace IronPython.Runtime.Exceptions {
             private PythonDictionary _dict;    // the dictionary for extra values, created on demand
             private System.Exception _clrException; // the cached CLR exception that is thrown
             private object[] _slots;                // slots, only used for storage of our weak reference.
+
+            public static string __doc__ = "Common base class for all non-exit exceptions.";
 
             #region Public API Surface
 
@@ -538,7 +544,7 @@ namespace IronPython.Runtime.Exceptions {
                 if (exception is FileNotFoundException ||
                     exception is DirectoryNotFoundException ||
                     exception is PathTooLongException 
-#if !SILVERLIGHT
+#if FEATURE_DRIVENOTFOUNDEXCEPTION
                     || exception is DriveNotFoundException
 #endif
                     ) {
@@ -552,6 +558,7 @@ namespace IronPython.Runtime.Exceptions {
                     return;
                 }
 
+#if !SILVERLIGHT5
                 var ioExcep = exception as System.IO.IOException;
                 if (ioExcep != null) {
                     try {
@@ -566,14 +573,17 @@ namespace IronPython.Runtime.Exceptions {
                         // not enough permissions to do this...
                     }
                 }
-                
+#endif
+
                 base.InitAndGetClrException(exception);
             }
 
+#if !SILVERLIGHT5
             [MethodImpl(MethodImplOptions.NoInlining)] // don't inline so the link demand is always evaluated here.
             private static int GetHRForException(System.Exception exception) {
                 return System.Runtime.InteropServices.Marshal.GetHRForException(exception);
             }
+#endif
         }
 
         public partial class _UnicodeTranslateError : BaseException {
@@ -865,7 +875,8 @@ for k, v in toError.iteritems():
             protected internal override void InitializeFromClr(System.Exception/*!*/ exception) {
                 EncoderFallbackException ex = exception as EncoderFallbackException;
                 if (ex != null) {
-                    __init__("unknown", new string(ex.CharUnknown, 1), ex.Index, ex.Index + 1, "");
+                    __init__((exception.Data.Contains("encoding")) ? exception.Data["encoding"] : "unknown",
+                        new string(ex.CharUnknown, 1), ex.Index, ex.Index + 1, exception.Message);
                 } else {
                     base.InitializeFromClr(exception);
                 }
@@ -997,9 +1008,9 @@ for k, v in toError.iteritems():
                 // explicit extra conversions that need a special transformation
                 if ((syntax = clrException as SyntaxErrorException) != null) {
                     return SyntaxErrorToPython(syntax);
-                } 
+                }
 
-#if !SILVERLIGHT // ThreadAbortException.ExceptionState
+#if FEATURE_EXCEPTION_STATE
                 ThreadAbortException ta;
                 if ((ta = clrException as ThreadAbortException) != null) {
                     // transform TA w/ our reason into a KeyboardInterrupt exception.
@@ -1034,7 +1045,6 @@ for k, v in toError.iteritems():
             if (clrException is InvalidCastException || clrException is ArgumentNullException) {
                 // explicit extra conversions outside the generated hierarchy
                 pyExcep = new BaseException(TypeError);
-#if !SILVERLIGHT
             } else if (clrException is Win32Exception) {
                 Win32Exception win32 = (Win32Exception)clrException;
                 pyExcep = new _WindowsError();
@@ -1044,7 +1054,6 @@ for k, v in toError.iteritems():
                     pyExcep.__init__(win32.ErrorCode, win32.Message);
                 }
                 return pyExcep;
-#endif
             } else {
                 // conversions from generated code (in the generated hierarchy)...
                 pyExcep = ToPythonHelper(clrException);
@@ -1056,11 +1065,7 @@ for k, v in toError.iteritems():
         }
 
         [Serializable]
-        private class ExceptionDataWrapper 
-#if !SILVERLIGHT
-            : MarshalByRefObject 
-#endif
-        {
+        private class ExceptionDataWrapper : MarshalByRefObject {
             private readonly object _value;
 
             public ExceptionDataWrapper(object value) {
@@ -1082,8 +1087,9 @@ for k, v in toError.iteritems():
             if (pyAware != null) {
                 pyAware.PythonException = exception;
             } else {
-                e.Data[_pythonExceptionKey] = new ExceptionDataWrapper(exception);
+                e.SetData(_pythonExceptionKey, new ExceptionDataWrapper(exception));
             }
+
             BaseException be = exception as BaseException;
             if (be != null) {
                 be.clsException = e;
@@ -1097,8 +1103,11 @@ for k, v in toError.iteritems():
             IPythonAwareException pyAware = e as IPythonAwareException;
             if (pyAware != null) {
                 return pyAware.PythonException;
-            }  else if (e.Data.Contains(_pythonExceptionKey)) {
-                return ((ExceptionDataWrapper)e.Data[_pythonExceptionKey]).Value;
+            }
+
+            var wrapper = e.GetData(_pythonExceptionKey) as ExceptionDataWrapper;
+            if (wrapper != null) {
+                return wrapper.Value;
             }
 
             return null;
@@ -1109,7 +1118,7 @@ for k, v in toError.iteritems():
             if (pyAware != null) {
                 return pyAware.Frames;
             } else {
-                return e.Data[typeof(DynamicStackFrame)] as List<DynamicStackFrame>;
+                return e.GetData(typeof(DynamicStackFrame)) as List<DynamicStackFrame>;
             }
         }
 
@@ -1118,7 +1127,7 @@ for k, v in toError.iteritems():
             if (pyAware != null) {
                 pyAware.Frames = frames;
             } else {
-                e.Data[typeof(DynamicStackFrame)] = frames;
+                e.SetData(typeof(DynamicStackFrame), frames);
             }
         }
 
@@ -1127,7 +1136,7 @@ for k, v in toError.iteritems():
             if (pyAware != null) {
                 pyAware.Frames = null;
             } else {
-                e.Data.Remove(typeof(DynamicStackFrame));
+                e.RemoveData(typeof(DynamicStackFrame));
             }
         }
 
@@ -1136,7 +1145,7 @@ for k, v in toError.iteritems():
             if (pyAware != null) {
                 return pyAware.TraceBack;
             } else {
-                return e.Data[typeof(TraceBack)] as TraceBack;
+                return e.GetData(typeof(TraceBack)) as TraceBack;
             }
         }
 
@@ -1145,7 +1154,7 @@ for k, v in toError.iteritems():
             if (pyAware != null) {
                 pyAware.TraceBack = traceback;
             } else {
-                e.Data[typeof(TraceBack)] = traceback;
+                e.SetData(typeof(TraceBack), traceback);
             }
         }
 
@@ -1154,7 +1163,7 @@ for k, v in toError.iteritems():
             if (pyAware != null) {
                 pyAware.TraceBack = null;
             } else {
-                e.Data.Remove(typeof(TraceBack));
+                e.RemoveData(typeof(TraceBack));
             }
         }
 
@@ -1173,7 +1182,7 @@ for k, v in toError.iteritems():
 
             string sourceLine = PythonContext.GetSourceLine(e);
             string fileName = e.GetSymbolDocumentName();
-            object column = (e.Column == 0 || e.Data.Contains(PythonContext._syntaxErrorNoCaret)) ? null : (object)e.Column;
+            object column = (e.Column == 0 || e.GetData(PythonContext._syntaxErrorNoCaret) != null) ? null : (object)e.Column;
             
             se.args = PythonTuple.MakeTuple(e.Message, PythonTuple.MakeTuple(fileName, e.Line, column, sourceLine));
 

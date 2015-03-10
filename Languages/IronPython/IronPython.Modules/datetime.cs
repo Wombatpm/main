@@ -22,15 +22,16 @@ using System.Text;
 
 using Microsoft.Scripting;
 using Microsoft.Scripting.Runtime;
+using Microsoft.Scripting.Utils;
 
 using IronPython.Runtime;
 using IronPython.Runtime.Operations;
 using IronPython.Runtime.Types;
 
-#if CLR2
-using Microsoft.Scripting.Math;
-#else
+#if FEATURE_NUMERICS
 using System.Numerics;
+#else
+using Microsoft.Scripting.Math;
 #endif
 
 [assembly: PythonModule("datetime", typeof(IronPython.Modules.PythonDateTime))]
@@ -196,7 +197,6 @@ namespace IronPython.Modules {
             public timedelta __pos__() { return +this; }
             public timedelta __neg__() { return -this; }
             public timedelta __abs__() { return (_days > 0) ? this : -this; }
-
             [SpecialName]
             public timedelta FloorDivide(int y) {
                 return this / y;
@@ -205,6 +205,11 @@ namespace IronPython.Modules {
             [SpecialName]
             public timedelta ReverseFloorDivide(int y) {
                 return this / y;
+            }
+
+            public double total_seconds() {
+                var total_microseconds = (double) this.microseconds + (this.seconds + this.days * 24.0 * 3600.0) * 1000000.0;
+                return total_microseconds / 1000000.0;
             }
 
             public bool __nonzero__() {
@@ -362,6 +367,10 @@ namespace IronPython.Modules {
             return false;
         }
 
+        internal static int CastToInt(object o) {
+            return o is BigInteger ? (int)(BigInteger)o : (int)o;
+        }
+
         [PythonType]
         public class date : ICodeFormattable {
             internal DateTime _dateTime;
@@ -476,9 +485,9 @@ namespace IronPython.Modules {
                     if (strVal == null) continue;
 
                     switch (strVal) {
-                        case "year": year2 = PythonContext.GetContext(context).ConvertToInt32(kvp.Value); break;
-                        case "month": month2 = PythonContext.GetContext(context).ConvertToInt32(kvp.Value); break;
-                        case "day": day2 = PythonContext.GetContext(context).ConvertToInt32(kvp.Value); break;
+                        case "year": year2 = CastToInt(kvp.Value); break;
+                        case "month": month2 = CastToInt(kvp.Value); break;
+                        case "day": day2 = CastToInt(kvp.Value); break;
                         default: throw PythonOps.TypeError("{0} is an invalid keyword argument for this function", kvp.Key);
                     }
                 }
@@ -562,9 +571,9 @@ namespace IronPython.Modules {
 
             public override bool Equals(object obj) {
                 if (obj == null) return false;
-
-                if (obj.GetType() == typeof(date)) {
-                    date other = (date)obj;
+                
+                date other = obj as date;
+                if (other != null && !(obj is datetime)) {
                     return this._dateTime == other._dateTime;
                 } else {
                     return false;
@@ -666,6 +675,14 @@ namespace IronPython.Modules {
 
             public virtual string/*!*/ __repr__(CodeContext/*!*/ context) {
                 return string.Format("datetime.date({0}, {1}, {2})", _dateTime.Year, _dateTime.Month, _dateTime.Day);
+            }
+
+            public virtual string __format__(CodeContext/*!*/ context, string dateFormat){
+                if (string.IsNullOrEmpty(dateFormat)) {
+                    return PythonOps.ToString(context, this);
+                } else {
+                    return this.strftime(context, dateFormat);
+                }
             }
 
             #endregion
@@ -792,10 +809,6 @@ namespace IronPython.Modules {
             }
 
             // other constructors, all class methods:
-            public new static object today() {
-                return new datetime(DateTime.Now, 0, null);
-            }
-
             public static object now([DefaultParameterValue(null)]tzinfo tz) {
                 if (tz != null) {
                     return tz.fromutc(new datetime(DateTime.UtcNow, 0, tz));
@@ -807,6 +820,11 @@ namespace IronPython.Modules {
             public static object utcnow() {
                 return new datetime(DateTime.UtcNow, 0, null);
             }
+
+            
+            public new static object today() {
+                return new datetime(DateTime.Now, 0, null);
+            }           
 
             public static object fromtimestamp(double timestamp, [DefaultParameterValue(null)] tzinfo tz) {
                 DateTime dt = PythonTime.TimestampToDateTime(timestamp);
@@ -937,25 +955,25 @@ namespace IronPython.Modules {
 
                     switch (key) {
                         case "year":
-                            lyear = (int)kvp.Value;
+                            lyear = CastToInt(kvp.Value);
                             break;
                         case "month":
-                            lmonth = (int)kvp.Value;
+                            lmonth = CastToInt(kvp.Value);
                             break;
                         case "day":
-                            lday = (int)kvp.Value;
+                            lday = CastToInt(kvp.Value);
                             break;
                         case "hour":
-                            lhour = (int)kvp.Value;
+                            lhour = CastToInt(kvp.Value);
                             break;
                         case "minute":
-                            lminute = (int)kvp.Value;
+                            lminute = CastToInt(kvp.Value);
                             break;
                         case "second":
-                            lsecond = (int)kvp.Value;
+                            lsecond = CastToInt(kvp.Value);
                             break;
                         case "microsecond":
-                            lmicrosecond = (int)kvp.Value;
+                            lmicrosecond = CastToInt(kvp.Value);
                             break;
                         case "tzinfo":
                             tz = kvp.Value as tzinfo;
@@ -1081,13 +1099,19 @@ namespace IronPython.Modules {
                         InternalDateTime.Hour,
                         InternalDateTime.Minute,
                         InternalDateTime.Second,
-                        InternalDateTime.Millisecond * 1000 + _lostMicroseconds
+                        this.microsecond,
+                        this.tzinfo
                     )
                 );
             }
 
             public override string strftime(CodeContext/*!*/ context, string dateFormat) {
-                return PythonTime.strftime(context, dateFormat, _dateTime, _lostMicroseconds);
+                return PythonTime.strftime(context, dateFormat, _dateTime, microsecond);
+            }
+
+            public static datetime strptime(CodeContext/*!*/ context, string date_string, string format) {
+                var packed = PythonTime._strptime(context, date_string, format);
+                return new datetime((DateTime)packed[0]);
             }
 
             #region IRichComparable Members
@@ -1124,6 +1148,7 @@ namespace IronPython.Modules {
 
             public override string/*!*/ __repr__(CodeContext/*!*/ context) {
                 StringBuilder sb = new StringBuilder();
+                // TODO: need to determine how to get the actual class name if a derived type (CP21478)
                 sb.AppendFormat("datetime.datetime({0}, {1}, {2}, {3}, {4}",
                     InternalDateTime.Year,
                     InternalDateTime.Month,
@@ -1255,6 +1280,19 @@ namespace IronPython.Modules {
                 return new time(date._timeSpan.Add(delta.TimeSpanWithDaysAndSeconds), delta._microseconds + date._lostMicroseconds, date._tz);
             }
 
+            public PythonTuple __reduce__() {
+                return PythonTuple.MakeTuple(
+                    DynamicHelpers.GetPythonTypeFromType(GetType()),
+                    PythonTuple.MakeTuple(
+                        this.hour,
+                        this.minute,
+                        this.second,
+                        this.microsecond,
+                        this.tzinfo
+                    )
+                );
+            }
+
             public bool __nonzero__() {
                 return this.UtcTime.TimeSpan.Ticks != 0 || this.UtcTime.LostMicroseconds != 0;
             }
@@ -1281,16 +1319,16 @@ namespace IronPython.Modules {
 
                     switch (key) {
                         case "hour":
-                            lhour = (int)kvp.Value;
+                            lhour = CastToInt(kvp.Value);
                             break;
                         case "minute":
-                            lminute = (int)kvp.Value;
+                            lminute = CastToInt(kvp.Value);
                             break;
                         case "second":
-                            lsecond = (int)kvp.Value;
+                            lsecond = CastToInt(kvp.Value);
                             break;
                         case "microsecond":
-                            lmicrosecond = (int)kvp.Value;
+                            lmicrosecond = CastToInt(kvp.Value);
                             break;
                         case "tzinfo":
                             tz = kvp.Value as tzinfo;

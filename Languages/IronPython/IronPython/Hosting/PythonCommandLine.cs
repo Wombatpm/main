@@ -12,6 +12,7 @@
  *
  *
  * ***************************************************************************/
+#if FEATURE_FULL_CONSOLE
 
 using System;
 using System.Collections.Generic;
@@ -29,7 +30,6 @@ using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
 
 namespace IronPython.Hosting {
-#if !SILVERLIGHT
     /// <summary>
     /// A simple Python command-line should mimic the standard python.exe
     /// </summary>
@@ -56,28 +56,8 @@ namespace IronPython.Hosting {
         /// because it is intended to be outputted through the Python I/O system.
         /// </summary>
         public static string GetLogoDisplay() {
-            return GetVersionString() +
+            return PythonContext.GetVersionString() +
                    "\nType \"help\", \"copyright\", \"credits\" or \"license\" for more information.\n";
-        }
-
-        private static string/*!*/ VersionString {
-            get {
-                return GetVersionString();                    
-            }
-        }
-
-        private static string GetVersionString() {
-
-            return String.Format("{0}{3} ({1}) on .NET {2}",
-                                PythonContext.IronPythonDisplayName,
-                                PythonContext.GetPythonVersion().ToString(),
-                                Environment.Version,
-#if DEBUG
-                                " DEBUG"
-#else
-                                ""
-#endif
-                                );
         }
 
         private int GetEffectiveExitCode(SystemExitException/*!*/ e) {
@@ -143,7 +123,16 @@ namespace IronPython.Hosting {
                 return 0;
             }
 
-            return base.Run();
+            int result = base.Run();
+
+            // Check if IRONPYTHONINSPECT was set during execution
+            string inspectLine = Environment.GetEnvironmentVariable("IRONPYTHONINSPECT");
+            if (inspectLine != null && !Options.Introspection)
+                result = RunInteractiveLoop();
+
+            return result;
+
+
         }
 
         #region Initialization
@@ -168,6 +157,12 @@ namespace IronPython.Hosting {
 
             ImportSite();
 
+            // Equivalent to -i command line option
+            // Check if IRONPYTHONINSPECT was set before execution
+            string inspectLine = Environment.GetEnvironmentVariable("IRONPYTHONINSPECT");
+            if (inspectLine != null)
+                Options.Introspection = true;
+
             // If running in console mode (including with -c), the current working directory should be
             // the first entry in sys.path. If running a script file, however, the CWD should not be added;
             // instead, the script's containg folder should be added.
@@ -179,6 +174,10 @@ namespace IronPython.Hosting {
                     Options.FileName = "<stdin>";
                 } else {
 #if !SILVERLIGHT
+                    if (Directory.Exists(Options.FileName)) {
+                        Options.FileName = Path.Combine(Options.FileName, "__main__.py");
+                    }
+
                     if (!File.Exists(Options.FileName)) {
                         Console.WriteLine(
                             String.Format(
@@ -196,6 +195,7 @@ namespace IronPython.Hosting {
             }
 
             PythonContext.InsertIntoPath(0, fullPath);
+            PythonContext.MainThread = Thread.CurrentThread;
         }
 
         protected override Scope/*!*/ CreateScope() {
@@ -225,9 +225,7 @@ namespace IronPython.Hosting {
 #endif
         }
 
-        private string InitializeModules() {
-            string version = VersionString;
-
+        private void InitializeModules() {
             string executable = "";
             string prefix = "";
 #if !SILVERLIGHT // paths     
@@ -238,8 +236,7 @@ namespace IronPython.Hosting {
                 prefix = Path.GetDirectoryName(executable);
             }
 #endif
-            PythonContext.SetHostVariables(prefix, executable, version);
-            return version;
+            PythonContext.SetHostVariables(prefix, executable, null);
         }
 
         /// <summary>
@@ -301,6 +298,32 @@ namespace IronPython.Hosting {
 
             return (int)result;
         }
+
+        protected override string Prompt {
+            get {
+                object value;
+                if (Engine.GetSysModule().TryGetVariable("ps1", out value)) {
+                    var context = ((PythonScopeExtension)Scope.GetExtension(Language.ContextId)).ModuleContext.GlobalContext;
+
+                    return PythonOps.ToString(context, value);
+                }
+
+                return ">>> ";
+            }
+        }
+
+        public override string PromptContinuation {
+            get {
+                object value;
+                if (Engine.GetSysModule().TryGetVariable("ps2", out value)) {
+                    var context = ((PythonScopeExtension)Scope.GetExtension(Language.ContextId)).ModuleContext.GlobalContext;
+
+                    return PythonOps.ToString(context, value);
+                }
+
+                return "... ";
+            }
+        }
         
         private void RunStartup() {
             if (Options.IgnoreEnvironmentVariables)
@@ -351,7 +374,7 @@ namespace IronPython.Hosting {
 
             try {
                 result = RunOneInteraction();
-#if SILVERLIGHT // ThreadAbortException.ExceptionState
+#if !FEATURE_EXCEPTION_STATE
             } catch (ThreadAbortException) {
 #else
             } catch (ThreadAbortException tae) {
@@ -524,5 +547,5 @@ namespace IronPython.Hosting {
         }
 
     }
-#endif
 }
+#endif

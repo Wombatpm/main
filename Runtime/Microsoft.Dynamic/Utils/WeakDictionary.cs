@@ -16,8 +16,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
-using Microsoft.Contracts;
 
 namespace Microsoft.Scripting.Utils {
     /// <summary>
@@ -37,15 +37,20 @@ namespace Microsoft.Scripting.Utils {
     public class WeakDictionary<TKey, TValue> : IDictionary<TKey, TValue> {
         // The one and only comparer instance.
         static readonly IEqualityComparer<object> comparer = new WeakComparer<object>();
+        static readonly ConstructorInfo valueConstructor;
 
-        IDictionary<object, TValue> dict = new Dictionary<object, TValue>(comparer);
-        int version, cleanupVersion;
+        private IDictionary<object, TValue> dict = new Dictionary<object, TValue>(comparer);
+        private int version, cleanupVersion;
 
-#if SILVERLIGHT // GC
+#if SILVERLIGHT || WIN8 || WP75 // GC
         WeakReference cleanupGC = new WeakReference(new object());
 #else
         int cleanupGC = 0;
 #endif
+        static WeakDictionary()
+        {
+            valueConstructor = typeof(TValue).GetConstructor(new Type[] { });
+        }
 
         public WeakDictionary() {
         }
@@ -62,7 +67,6 @@ namespace Microsoft.Scripting.Utils {
             dict.Add(new WeakObject(key), value);
         }
 
-        [Confined]
         public bool ContainsKey(TKey key) {
             // We dont have to worry about creating "new WeakObject(key)" since the comparer
             // can compare raw objects with WeakObject.
@@ -83,6 +87,20 @@ namespace Microsoft.Scripting.Utils {
 
         public bool TryGetValue(TKey key, out TValue value) {
             return dict.TryGetValue(key, out value);
+        }
+
+        public TValue GetOrCreateValue(TKey key) {
+            TValue value;
+            if (!TryGetValue(key, out value)) {
+                if (valueConstructor == null) {
+                    throw new InvalidOperationException(string.Format("{0} does not have a default constructor.", typeof(TValue).Name));
+                }
+            
+                value = (TValue)valueConstructor.Invoke(new object[] { });
+                Add(key, value);
+            }
+
+            return value;
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1065:DoNotRaiseExceptionsInUnexpectedLocations")] // TODO: fix
@@ -127,9 +145,11 @@ namespace Microsoft.Scripting.Utils {
                 // WeakReferences can become zero only during the GC.
 
                 bool garbage_collected;
-#if SILVERLIGHT // GC.CollectionCount
+#if SILVERLIGHT || WIN8 || WP75 // GC.CollectionCount
                 garbage_collected = !cleanupGC.IsAlive;
-                if (garbage_collected) cleanupGC = new WeakReference(new object());
+                if (garbage_collected) {
+                    cleanupGC = new WeakReference(new object());
+                }
 #else
                 int currentGC = GC.CollectionCount(0);
                 garbage_collected = currentGC != cleanupGC;
@@ -187,7 +207,6 @@ namespace Microsoft.Scripting.Utils {
             throw new NotImplementedException();
         }
 
-        [Confined]
         public bool Contains(KeyValuePair<TKey, TValue> item) {
             // TODO:
             throw new NotImplementedException();
@@ -223,7 +242,6 @@ namespace Microsoft.Scripting.Utils {
 
         #region IEnumerable<KeyValuePair<TKey,TValue>> Members
 
-        [Pure]
         public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator() {
             // TODO:
             throw new NotImplementedException();
@@ -233,7 +251,6 @@ namespace Microsoft.Scripting.Utils {
 
         #region IEnumerable Members
 
-        [Pure]
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() {
             // TODO:
             throw new NotImplementedException();
@@ -247,8 +264,9 @@ namespace Microsoft.Scripting.Utils {
         int hashCode;
 
         public WeakObject(object obj) {
-            weakReference = new WeakReference(obj, true);
-            hashCode = (obj == null) ? 0 : RuntimeHelpers.GetHashCode(obj);
+            // CF throws doesn't support long weak references (NotSuportedException is thrown)
+            weakReference = new WeakReference(obj, !PlatformAdaptationLayer.IsCompactFramework);
+            hashCode = (obj == null) ? 0 : ReferenceEqualityComparer<object>.Instance.GetHashCode(obj);
         }
 
         public object Target {
@@ -257,12 +275,10 @@ namespace Microsoft.Scripting.Utils {
             }
         }
 
-        [Confined]
         public override int GetHashCode() {
             return hashCode;
         }
 
-        [Confined]
         public override bool Equals(object obj) {
             object target = weakReference.Target;
             if (target == null) {
@@ -292,7 +308,7 @@ namespace Microsoft.Scripting.Utils {
             if (wobj != null)
                 return wobj.GetHashCode();
 
-            return (obj == null) ? 0 : RuntimeHelpers.GetHashCode(obj);
+            return (obj == null) ? 0 : ReferenceEqualityComparer<object>.Instance.GetHashCode(obj);
         }
     }
 

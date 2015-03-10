@@ -1,11 +1,11 @@
 ﻿/* ****************************************************************************
  *
- * Copyright (c) Microsoft Corporation. 
+ * Copyright (c) Microsoft Corporation.
  *
- * This source code is subject to terms and conditions of the Apache License, Version 2.0. A 
- * copy of the license can be found in the License.html file at the root of this distribution. If 
- * you cannot locate the  Apache License, Version 2.0, please send an email to 
- * ironruby@microsoft.com. By using this source code in any fashion, you are agreeing to be bound 
+ * This source code is subject to terms and conditions of the Apache License, Version 2.0. A
+ * copy of the license can be found in the License.html file at the root of this distribution. If
+ * you cannot locate the  Apache License, Version 2.0, please send an email to
+ * ironruby@microsoft.com. By using this source code in any fashion, you are agreeing to be bound
  * by the terms of the Apache License, Version 2.0.
  *
  * You must not remove this notice, or any other, from this software.
@@ -23,48 +23,141 @@ using Microsoft.Scripting.Utils;
 using IronRuby.Runtime.Calls;
 
 namespace IronRuby.Runtime {
+    using UnaryOpSite = CallSite<Func<CallSite, object, object>>;
+    using BinaryOpSite = CallSite<Func<CallSite, object, object, object>>;
+    using TernaryOpSite = CallSite<Func<CallSite, object, object, object, object>>;
 
-    public class IOWrapper : Stream {
-        private readonly CallSite<Func<CallSite, object, object, object>> _writeSite;
-        private readonly CallSite<Func<CallSite, object, object, object>> _readSite;
-        private readonly CallSite<Func<CallSite, object, object, object, object>> _seekSite;
-        private readonly CallSite<Func<CallSite, object, object>> _tellSite;
-            
+    public sealed class IOWrapper : Stream {
+        private readonly RubyContext _context;
 
-        private readonly object _obj;
+        #region Call Sites
+
+        private UnaryOpSite _closeSite;
+        private UnaryOpSite _flushSite;
+        private BinaryOpSite _writeSite;
+        private BinaryOpSite _readSite;
+        private TernaryOpSite _seekSite;
+        private UnaryOpSite _tellSite;
+
+        private UnaryOpSite CloseSite {
+            get {
+                if (_closeSite == null) {
+                    _closeSite = UnaryOpSite.Create(RubyCallAction.Make(_context, "close", RubyCallSignature.WithImplicitSelf(0)));
+                }
+
+                return _closeSite;
+            }
+        }
+
+        private UnaryOpSite FlushSite {
+            get {
+                if (_flushSite == null) {
+                    _flushSite = UnaryOpSite.Create(RubyCallAction.Make(_context, "flush", RubyCallSignature.WithImplicitSelf(0)));
+                }
+
+                return _flushSite;
+            }
+        }
+
+        private BinaryOpSite WriteSite {
+            get {
+                if (_writeSite == null) {
+                    _writeSite = BinaryOpSite.Create(RubyCallAction.Make(_context, "write", RubyCallSignature.WithImplicitSelf(1)));
+                }
+
+                return _writeSite;
+            }
+        }
+
+        private BinaryOpSite ReadSite {
+            get {
+                if (_readSite == null) {
+                    _readSite = BinaryOpSite.Create(RubyCallAction.Make(_context, "read", RubyCallSignature.WithImplicitSelf(1)));
+                }
+
+                return _readSite;
+            }
+        }
+
+        private TernaryOpSite SeekSite {
+            get {
+                if (_seekSite == null) {
+                    _seekSite = TernaryOpSite.Create(RubyCallAction.Make(_context, "seek", RubyCallSignature.WithImplicitSelf(2)));
+                }
+
+                return _seekSite;
+            }
+        }
+
+        private UnaryOpSite TellSite {
+            get {
+                if (_tellSite == null) {
+                    _tellSite = UnaryOpSite.Create(RubyCallAction.Make(_context, "tell", RubyCallSignature.WithImplicitSelf(0)));
+                }
+
+                return _tellSite;
+            }
+        }
+
+        private UnaryOpSite PosSite {
+            get {
+                if (_posSite == null) {
+                    _posSite = UnaryOpSite.Create(RubyCallAction.Make(_context, "pos", RubyCallSignature.WithImplicitSelf(0)));
+                }
+
+                return _posSite;
+            }
+        }
+
+        private UnaryOpSite EofQSite {
+            get {
+                if (_eofQSite == null) {
+                    _eofQSite = UnaryOpSite.Create(RubyCallAction.Make(_context, "eof?", RubyCallSignature.WithImplicitSelf(0)));
+                }
+
+                return _eofQSite;
+            }
+        }
+
+        private UnaryOpSite EofSite {
+            get {
+                if (_eofSite == null) {
+                    _eofSite = UnaryOpSite.Create(RubyCallAction.Make(_context, "eof", RubyCallSignature.WithImplicitSelf(0)));
+                }
+
+                return _eofSite;
+            }
+        }
+
+        #endregion
+
+        private readonly object _io;
         private readonly bool _canRead;
         private readonly bool _canWrite;
         private readonly bool _canSeek;
         private readonly bool _canFlush;
-        private readonly bool _canBeClosed;
+        private readonly bool _canClose;
         private readonly byte[]/*!*/ _buffer;
         private int _writePos;
         private int _readPos;
         private int _readLen;
+        private UnaryOpSite _posSite;
+        private UnaryOpSite _eofQSite;
+        private UnaryOpSite _eofSite;
+        private RespondToStorage _respondToStorage;
 
-        public IOWrapper(RubyContext/*!*/ context, object io, bool canRead, bool canWrite, bool canSeek, bool canFlush, bool canBeClosed, int bufferSize) {
+        public IOWrapper(RubyContext/*!*/ context, object io, bool canRead, bool canWrite, bool canSeek, bool canFlush, bool canClose, int bufferSize) {
             Assert.NotNull(context);
 
-            _writeSite = CallSite<Func<CallSite, object, object, object>>.Create(
-                RubyCallAction.Make(context, "write", RubyCallSignature.WithImplicitSelf(1))
-            );
-            _readSite = CallSite<Func<CallSite, object, object, object>>.Create(
-                RubyCallAction.Make(context, "read", RubyCallSignature.WithImplicitSelf(1))
-            );
-            _seekSite = CallSite<Func<CallSite, object, object, object, object>>.Create(
-                RubyCallAction.Make(context, "seek", RubyCallSignature.WithImplicitSelf(2))
-            );
-            _tellSite = CallSite<Func<CallSite, object, object>>.Create(
-                RubyCallAction.Make(context, "tell", RubyCallSignature.WithImplicitSelf(0))
-            );
+            _context = context;
+            _respondToStorage = new RespondToStorage(_context);
 
-            _obj = io;
-
+            _io = io;
             _canRead = canRead;
             _canWrite = canWrite;
             _canSeek = canSeek;
             _canFlush = canFlush;
-            _canBeClosed = canBeClosed;
+            _canClose = canClose;
             _buffer = new byte[bufferSize];
             _writePos = 0;
             _readPos = 0;
@@ -72,7 +165,7 @@ namespace IronRuby.Runtime {
         }
 
         public object UnderlyingObject {
-            get { return _obj; }
+            get { return _io; }
         }
 
         public override bool CanRead {
@@ -83,31 +176,38 @@ namespace IronRuby.Runtime {
             get { return _canSeek; }
         }
 
-        public bool CanBeClosed {
-            get { return _canBeClosed; }
-        }
-
         public override bool CanWrite {
             get { return _canWrite; }
         }
 
         public override long Length {
             get {
-                long currentPos = Position;
-                Seek(0, SeekOrigin.End);
-                long result = Position;
-                Position = currentPos;
-                return result;
+                if (_io is Stream) {
+                    return ((Stream)_io).Length;
+                } else {
+                    long currentPos = this.Position;
+                    Seek(0, SeekOrigin.End);
+                    long result = this.Position;
+                    this.Position = currentPos;
+                    return result;
+                }
             }
         }
 
         public override long Position {
             get {
-                if (!_canSeek) {
-                    throw new NotSupportedException();
+                if (_io is Stream) {
+                    return ((Stream)_io).Position;
                 }
                 // TODO: conversion
-                return (long)_tellSite.Target(_tellSite, _obj);
+                if (Protocols.RespondTo(_respondToStorage, _io, "pos")) {
+                    return (long)this.PosSite.Target(this.PosSite, _io);
+                } else {
+                    if (!_canSeek) {
+                        throw new NotSupportedException();
+                    }
+                    return (long)this.TellSite.Target(this.TellSite, _io);
+                }
             }
             set {
                 if (!_canSeek) {
@@ -117,17 +217,28 @@ namespace IronRuby.Runtime {
             }
         }
 
+        public bool Eof {
+            get {
+                if (Protocols.RespondTo(_respondToStorage, _io, "eof?")) {
+                    return (bool)this.EofQSite.Target(this.EofQSite, _io);
+                } else if (Protocols.RespondTo(_respondToStorage, _io, "eof")) {
+                    return (bool)this.EofSite.Target(this.EofSite, _io);
+                } else {
+                    return this.Position >= this.Length;
+                }
+            }
+        }
+
         public override void Flush() {
             FlushWrite();
             FlushRead();
-        }
-
-        public void Flush(UnaryOpStorage/*!*/ flushStorage, RubyContext/*!*/ context) {
-            Flush();
 
             if (_canFlush) {
-                var site = flushStorage.GetCallSite("flush");
-                site.Target(site, _obj);
+                try {
+                    FlushSite.Target(FlushSite, _io);
+                } catch (MissingMethodException) {
+                    // nop
+                }
             }
         }
 
@@ -145,10 +256,29 @@ namespace IronRuby.Runtime {
             _readLen = 0;
         }
 
+        protected override void Dispose(bool disposing) {
+            if (disposing) {
+                Flush();
+
+                base.Dispose(disposing);
+
+                if (_canClose) {
+                    try {
+                        CloseSite.Target(CloseSite, _io);
+                    } catch (MissingMethodException) {
+                        // nop
+                    }
+                }
+            } else {
+                base.Dispose(disposing);
+            }
+        }
+
         public override int Read(byte[]/*!*/ buffer, int offset, int count) {
             if (!_canRead) {
                 throw new NotSupportedException();
             }
+
             int size = _readLen - _readPos;
             if (size == 0) {
                 FlushWrite();
@@ -165,9 +295,11 @@ namespace IronRuby.Runtime {
                 _readPos = 0;
                 _readLen = size;
             }
+
             if (size > count) {
                 size = count;
             }
+
             Buffer.BlockCopy(_buffer, _readPos, buffer, offset, size);
             _readPos += size;
             if (size < count) {
@@ -197,8 +329,9 @@ namespace IronRuby.Runtime {
         }
 
         private int ReadFromObject(byte[]/*!*/ buffer, int offset, int count) {
+            // TODO: readpartial is called if available
             // TODO: conversion
-            MutableString result = (MutableString)_readSite.Target(_readSite, _obj, count);
+            MutableString result = (MutableString)ReadSite.Target(ReadSite, _io, count);
             if (result == null) {
                 return 0;
             } else {
@@ -226,7 +359,7 @@ namespace IronRuby.Runtime {
                     break;
             }
 
-            _seekSite.Target(_seekSite, _obj, offset, rubyOrigin);
+            SeekSite.Target(SeekSite, _io, offset, rubyOrigin);
             return Position;
         }
 
@@ -287,7 +420,7 @@ namespace IronRuby.Runtime {
         private void WriteToObject(byte[]/*!*/ buffer, int offset, int count) {
             MutableString argument = MutableString.CreateBinary(count);
             argument.Append(buffer, offset, count);
-            _writeSite.Target(_writeSite, _obj, argument);
+            WriteSite.Target(WriteSite, _io, argument);
         }
     }
 }

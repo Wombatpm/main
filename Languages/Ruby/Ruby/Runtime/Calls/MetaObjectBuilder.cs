@@ -13,13 +13,14 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using Microsoft.Scripting.Ast;
 #endif
 
 using System;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -205,7 +206,7 @@ namespace IronRuby.Runtime.Calls {
         public void AddTypeRestriction(Type/*!*/ type, Expression/*!*/ expression) {
             if (_treatRestrictionsAsConditions) {
                 AddCondition(Ast.TypeEqual(expression, type));
-            } else if (expression.Type != type || !type.IsSealed) {
+            } else if (expression.Type != type || !type.IsSealed()) {
                 Add(BindingRestrictions.GetTypeRestriction(expression, type));
             }
         }
@@ -259,9 +260,12 @@ namespace IronRuby.Runtime.Calls {
                 Type type = target.GetType();
                 AddTypeRestriction(type, targetParameter);
             
-                // Ruby objects (get the method directly to prevent interface dispatch):
-                MethodInfo classGetter = type.GetMethod(Methods.IRubyObject_get_ImmediateClass.Name, BindingFlags.Public | BindingFlags.Instance);
-                if (type.IsVisible && classGetter != null && classGetter.ReturnType == typeof(RubyClass)) {
+                // Ruby objects (get the method directly to avoid interface dispatch):
+                MethodInfo classGetter = type.GetInheritedMethods(Methods.IRubyObject_get_ImmediateClass.Name)
+                    .Where(m => m.IsPublic && !m.IsStatic)
+                    .SingleOrDefault();
+
+                if (type.IsVisible() && classGetter != null && classGetter.ReturnType == typeof(RubyClass)) {
                     AddCondition(
                         // (#{type})target.ImmediateClass.Version.Method == #{immediateClass.Version.Method}
                         Ast.Equal(
@@ -368,7 +372,7 @@ namespace IronRuby.Runtime.Calls {
             }
             
             listLength = value.Count;
-            AddCondition(Ast.Equal(Ast.Property(assignment, typeof(ICollection).GetProperty("Count")), AstUtils.Constant(value.Count)));
+            AddCondition(Ast.Equal(Ast.Property(assignment, typeof(ICollection).GetDeclaredProperty("Count")), AstUtils.Constant(value.Count)));
         }
 
         #endregion

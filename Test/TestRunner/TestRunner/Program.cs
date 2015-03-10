@@ -7,12 +7,13 @@ using System.Xml.Serialization;
 using System.Diagnostics;
 using System.Threading;
 using System.Reflection;
+using System.ComponentModel;
 
 namespace TestRunner {
     class Program {
         private bool _verbose, _runLongRunning, _admin, _quiet;
-        private int _threadCount = 6;
-        private List<TestResult> _failures = new List<TestResult>();
+        private int _threadCount = 1;
+        private List<TestResult> _results = new List<TestResult>();
 
         static int Main(string[] args) {
             return new Program().MainBody(args);
@@ -38,6 +39,7 @@ namespace TestRunner {
             // Default to debug binaries
             string binPath = Path.Combine(dlrRoot, "bin\\Debug");
             bool runAll = false;
+            string nunitOutputPath = null;
 
             // parse the options
             for (int i = 0; i < args.Length; i++) {
@@ -47,6 +49,10 @@ namespace TestRunner {
                     tests.Add(args[i].Substring("/test:".Length));
                 } else if (args[i].StartsWith("/binpath:")) {
                     binPath = Path.Combine(dlrRoot, args[i].Substring("/binpath:".Length));
+                }
+                else if (args[i].StartsWith("/nunitoutput:"))
+                {
+                    nunitOutputPath = args[i].Substring("/nunitoutput:".Length);
                 } else if (args[i] == "/verbose") {
                     _verbose = true;
                 } else if (args[i] == "/runlong") {
@@ -155,12 +161,14 @@ namespace TestRunner {
                 RunTestForConsole(test);
             }
 
-            if (_failures.Count > 0) {
+            var failures = _results.Where(r => r.IsFailure).ToList();
+
+            if (failures.Count > 0) {
                 if (_verbose) {
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Failed test output:");
                     Console.ForegroundColor = ConsoleColor.Gray;
-                    foreach (var failedTest in _failures) {
+                    foreach (var failedTest in failures) {
                         Console.ForegroundColor = ConsoleColor.White;
                         Console.WriteLine(failedTest.Test.Name);
                         Console.ForegroundColor = ConsoleColor.Gray;
@@ -174,56 +182,83 @@ namespace TestRunner {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Failed test summary:");
                 Console.ForegroundColor = ConsoleColor.Gray;
-                foreach (var failedTest in _failures) {
+                foreach (var failedTest in failures) {
                     Console.WriteLine(failedTest.Test.Name);
                 }
             }
 
-            Console.WriteLine("Total time: {0} seconds", (DateTime.Now - start).TotalSeconds);
+            var elapsedTime = (DateTime.Now - start);
+            if (!string.IsNullOrWhiteSpace(nunitOutputPath))
+            {
+                var resultsWriter = new NUnitResultsWriter(_results, inputFiles.First(), elapsedTime);
+                resultsWriter.Save(nunitOutputPath);
+            }
+
+
+            Console.WriteLine("Total time: {0} seconds", elapsedTime.TotalSeconds);
 
             Console.ForegroundColor = originalColor;
 
-            return _failures.Count;
+            return failures.Count;
         }
 
         private void RunTestForConsole(Test test) {
-            var result = RunTest(test);
+            lock (this) {
+                if (!_quiet && _verbose) {
+                    Console.Write("{0,-100}", test.Category.Name + " " + test.Name);
+                }
+            }
+
+            TestResult result = null;
+            try {
+                result = RunTest(test);
+            } catch (Exception e) {
+                result = new TestResult(test, TestResultStatus.Failed, 0, new List<string> { e.Message });
+            }
 
             lock (this) {
                 if (!_quiet) {
-                    Console.Write("{0,-100}", test.Category.Name + " " + test.Name);
-
-                    const string resultFormat = "{0,-10}";
-                    switch (result.Status) {
-                        case TestResultStatus.Skipped:
-                            Console.ForegroundColor = ConsoleColor.Yellow;
-                            Console.Write(resultFormat, "SKIPPED");
-                            Console.ForegroundColor = ConsoleColor.Gray;
-                            break;
-                        case TestResultStatus.TimedOut:
-                            Console.ForegroundColor = ConsoleColor.Red;
-                            Console.Write(resultFormat, "TIMEOUT");
-                            break;
-                        case TestResultStatus.Passed:
-                            Console.ForegroundColor = ConsoleColor.Green;
-                            Console.Write(resultFormat, "PASSED");
-                            break;
-                        case TestResultStatus.Failed:
-                            Console.ForegroundColor = ConsoleColor.Red;
-                            Console.Write(resultFormat, "FAILED");
-                            break;
-                        case TestResultStatus.Disabled:
-                            Console.ForegroundColor = ConsoleColor.Blue;
-                            Console.Write(resultFormat, "DISABLED");
-                            break;
+                    if (_verbose) {
+                        const string resultFormat = "{0,-10}";
+                        var originalColor = Console.ForegroundColor;
+                        switch (result.Status) {
+                            case TestResultStatus.Skipped:
+                                Console.ForegroundColor = ConsoleColor.Yellow;
+                                Console.Write(resultFormat, "SKIPPED");
+                                break;
+                            case TestResultStatus.TimedOut:
+                                Console.ForegroundColor = ConsoleColor.Red;
+                                Console.Write(resultFormat, "TIMEOUT");
+                                break;
+                            case TestResultStatus.Passed:
+                                Console.ForegroundColor = ConsoleColor.Green;
+                                Console.Write(resultFormat, "PASSED");
+                                break;
+                            case TestResultStatus.Failed:
+                                Console.ForegroundColor = ConsoleColor.Red;
+                                Console.Write(resultFormat, "FAILED");
+                                break;
+                            case TestResultStatus.Disabled:
+                                Console.ForegroundColor = ConsoleColor.Blue;
+                                Console.Write(resultFormat, "DISABLED");
+                                break;
+                        }
+                        Console.ForegroundColor = originalColor;
+                        Console.WriteLine(result.EllapsedSeconds);
+                    } else {
+                        if (result.Status == TestResultStatus.Passed) {
+                            Console.Write(".");
+                        } else {
+                            Console.Write(result.Status.ToString()[0]);
+                        }
                     }
-                    Console.ForegroundColor = ConsoleColor.Gray;
-                    Console.WriteLine(result.EllapsedSeconds);
                 }
 
-                if (result.Status == TestResultStatus.Failed || result.Status == TestResultStatus.TimedOut) {
+                if (result.IsFailure) {
                     DisplayFailure(test, result);
                 }
+
+                _results.Add(result);
             }
         }
 
@@ -244,7 +279,6 @@ namespace TestRunner {
                     Console.WriteLine("> {0}", line);
                 }
             }
-            _failures.Add(result);
         }
 
         /// <summary>
@@ -259,34 +293,35 @@ namespace TestRunner {
 
             // start the process
             DateTime startTime = DateTime.Now;
-            var process = Process.Start(CreateProcessInfoFromTest(test));
-
-            // create the reader threads
+            Process process = null;
+            try {
+                process = Process.Start(CreateProcessInfoFromTest(test));
+            } catch (Win32Exception e) {
+                return new TestResult(test, TestResultStatus.Failed, 0, new List<string> { e.Message });
+            }
+            
+            // get the output asynchronously
             List<string> output = new List<string>();
-            Thread outThread = new Thread(() => {
-                while (!process.HasExited) {
-                    var line = process.StandardOutput.ReadLine();
-                    if (line != null) {
-                        lock (output) {
-                            output.Add(line);
-                        }
+            process.OutputDataReceived += (sender, e) => {
+                var line = e.Data;
+                if (line != null) {
+                    lock (output) {
+                        output.Add(line);
                     }
                 }
-            });
+            };
+            process.BeginOutputReadLine();
 
-            Thread errThread = new Thread(() => {
-                while (!process.HasExited) {
-                    var line = process.StandardError.ReadLine();
-                    if (line != null) {
-                        lock (output) {
-                            output.Add(line);
-                        }
+
+            process.ErrorDataReceived += (sender, e) => {
+                var line = e.Data;
+                if (line != null) {
+                    lock (output) {
+                        output.Add(line);
                     }
                 }
-            });
-
-            outThread.Start();
-            errThread.Start();
+            };
+            process.BeginErrorReadLine();
 
             // wait for it to exit
             if (test.MaxDuration > 0) {
@@ -294,6 +329,9 @@ namespace TestRunner {
             } else {
                 process.WaitForExit();
             }
+
+            process.CancelOutputRead();
+            process.CancelErrorRead();
 
             // kill if it needed, save status
             TestResultStatus status;
@@ -306,14 +344,12 @@ namespace TestRunner {
                 status = TestResultStatus.Failed;
             }
 
-            outThread.Join();
-            errThread.Join();
-
             return new TestResult(test, status, (DateTime.Now - startTime).TotalSeconds, output);
         }
 
         private static ProcessStartInfo CreateProcessInfoFromTest(Test test) {
             ProcessStartInfo psi = new ProcessStartInfo();
+            var args = test.Arguments.Contains("-X:Debug") ? test.Arguments : "-X:Debug " + test.Arguments;
             psi.Arguments = Environment.ExpandEnvironmentVariables(test.Arguments);
             psi.WorkingDirectory = Environment.ExpandEnvironmentVariables(test.WorkingDirectory);
             psi.FileName = Environment.ExpandEnvironmentVariables(test.Filename);
@@ -358,7 +394,7 @@ namespace TestRunner {
 
         private static void Help() {
             Console.WriteLine("Usage: ");
-            Console.WriteLine("TestRunner.exe (inputFile ...) [/threads:6] [/quiet] [/admin] [/binpath:dir] [/runlong] [/verbose] (/all | ([/category:CatName] | [/test:testName])+)");
+            Console.WriteLine("TestRunner.exe (inputFile ...) [/threads:6] [/quiet] [/admin] [/binpath:dir] [/runlong] [/verbose] [/nunitoutput:file] (/all | ([/category:CatName] | [/test:testName])+)");
         }
     }
 }

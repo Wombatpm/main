@@ -27,7 +27,7 @@ using Microsoft.Scripting.Utils;
 using IronPython.Runtime;
 using IronPython.Runtime.Operations;
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using MSAst = System.Linq.Expressions;
 #else
 using MSAst = Microsoft.Scripting.Ast;
@@ -126,12 +126,6 @@ namespace IronPython.Compiler.Ast {
             }
         }
         
-        internal override bool NeedsLocalContext {
-            get {
-                return true;
-            }
-        }
-
         internal override bool ExposesLocalVariable(PythonVariable variable) {
             return true;
         }

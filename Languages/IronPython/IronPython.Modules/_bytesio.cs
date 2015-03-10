@@ -13,6 +13,18 @@
  *
  * ***************************************************************************/
 
+#if FEATURE_CORE_DLR
+using System.Linq.Expressions;
+#else
+using Microsoft.Scripting.Ast;
+#endif
+
+#if FEATURE_NUMERICS
+using System.Numerics;
+#else
+using Microsoft.Scripting.Math;
+#endif
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -23,20 +35,13 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 using Microsoft.Scripting.Runtime;
+using Microsoft.Scripting.Utils;
 
 using IronPython.Runtime;
 using IronPython.Runtime.Binding;
 using IronPython.Runtime.Operations;
 using IronPython.Runtime.Types;
 using IronPython.Runtime.Exceptions;
-
-#if CLR2
-using Microsoft.Scripting.Ast;
-using Microsoft.Scripting.Math;
-#else
-using System.Linq.Expressions;
-using System.Numerics;
-#endif
 
 namespace IronPython.Modules {
     public static partial class PythonIOModule {
@@ -499,8 +504,6 @@ namespace IronPython.Modules {
                     return DoWrite(((ArrayModule.array)bytes).ToByteArray()); // as byte[]
                 } else if (bytes is ICollection<byte>) {
                     return DoWrite((ICollection<byte>)bytes);
-                } else if (bytes is PythonBuffer) {
-                    return DoWrite(((PythonBuffer)bytes).ToString()); // as string
                 } else if (bytes is string) {
                     // TODO Remove this when we move to 3.x
                     return DoWrite((string)bytes); // as string

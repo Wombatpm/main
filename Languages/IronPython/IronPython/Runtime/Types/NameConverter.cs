@@ -93,7 +93,7 @@ namespace IronPython.Runtime.Types {
                     // drop the namespace, leave the interface name, and replace 
                     // the dot with an underscore.  Eg System.IConvertible.ToBoolean
                     // becomes IConvertible_ToBoolean
-                    int lastDot = name.LastIndexOf(Type.Delimiter);
+                    int lastDot = name.LastIndexOf('.');
                     if (lastDot != -1) {
                         name = name.Substring(lastDot + 1);
                     }
@@ -106,7 +106,7 @@ namespace IronPython.Runtime.Types {
 
             if (namePrefix != null) name = namePrefix + name;
 
-            if (mi.DeclaringType.IsDefined(typeof(PythonTypeAttribute), false) ||
+            if (mi.DeclaringType.GetTypeInfo().IsDefined(typeof(PythonTypeAttribute), false) ||
                 !mi.DeclaringType.IsAssignableFrom(dt.UnderlyingSystemType)) {
                 // extension types are all python names
                 res |= NameType.Python;

@@ -10,6 +10,7 @@
 
 namespace IronPython {
     using System;
+    using System.Reflection;
     
     
     /// <summary>
@@ -39,7 +40,7 @@ namespace IronPython {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("IronPython.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("IronPython.Resources", typeof(Resources).GetTypeInfo().Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -106,7 +107,7 @@ namespace IronPython {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to EOF while scanning triple-quoted string.
+        ///   Looks up a localized string similar to EOF while scanning triple-quoted string literal.
         /// </summary>
         internal static string EofInTripleQuotedString {
             get {

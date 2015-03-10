@@ -30,6 +30,7 @@
       <File Id="Fct37mnrr8fqtai2mssw36jr08" Source="$(var.DlrRoot)Languages\Ruby\StdLib\ironruby\System.Core.rb" />
       <File Id="F75r8by1d7g6aajbpf78dam64j" Source="$(var.DlrRoot)Languages\Ruby\StdLib\ironruby\System.Data.rb" />
       <File Id="F58147r5c5xvvd5te89lwbe7oe" Source="$(var.DlrRoot)Languages\Ruby\StdLib\ironruby\System.Drawing.rb" />
+      <File Id="F3o04i0wcsougf1kvgkqi12tf8" Source="$(var.DlrRoot)Languages\Ruby\StdLib\ironruby\System.Numerics.rb" />
       <File Id="Fcv8hlo7j2uaealo6jva9kduzn" Source="$(var.DlrRoot)Languages\Ruby\StdLib\ironruby\System.Windows.Forms.rb" />
       <File Id="Fe7dq8v16lnak9aoxmazqsv3rx" Source="$(var.DlrRoot)Languages\Ruby\StdLib\ironruby\System.Xml.Linq.rb" />
       <File Id="Fa6goz94in6c9cr2q87iuvv1re" Source="$(var.DlrRoot)Languages\Ruby\StdLib\ironruby\System.Xml.rb" />
@@ -935,6 +936,13 @@
         <File Id="F1glfsb2gr2vshghp7emu2rh41" Source="$(var.DlrRoot)Languages\Ruby\StdLib\ruby\1.9.1\win32ole.rb" />
         <File Id="Fbdyu20p7thg6p5rx6f75q3li4" Source="$(var.DlrRoot)Languages\Ruby\StdLib\ruby\1.9.1\yaml.rb" />
       </Component>
+    </Directory>
+    <Directory Id="Defpk4cyike9tei6jmsq95cw7x" Name="gems">
+      <Directory Id="D1qrcobkb2refi8dwkvtmxh3ml" Name="1.9.1">
+        <Component Id="C1qrcobkb2refi8dwkvtmxh3ml" DiskId="1" Guid="96f98135-927c-45d4-b86d-16a527f8e06c">
+          <File Id="Fav265wqzw47wopjmqzqul19cs" Source="$(var.DlrRoot)Languages\Ruby\StdLib\ruby\gems\1.9.1\empty" />
+        </Component>
+      </Directory>
     </Directory>
     <Directory Id="D4dt1gyam4sn9ld82utrboyo47" Name="site_ruby">
       <Directory Id="D6pivmhauk6pvm1hask5ei1y17" Name="1.9.1">

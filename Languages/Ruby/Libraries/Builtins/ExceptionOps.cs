@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using Microsoft.Scripting.Ast;
@@ -140,13 +140,13 @@ namespace IronRuby.Builtins {
 
                         // RubyOps.MarkException(new <exception-type>(GetClrMessage(<class>, #message = <message>)))
                         if (cls.BuildAllocatorCall(metaBuilder, args, () =>
-                            Ast.Call(null, new Func<RubyClass, object, string>(GetClrMessage).Method,
+                            Ast.Call(null, new Func<RubyClass, object, string>(GetClrMessage).GetMethodInfo(),
                                 classExpression,
                                 Ast.Assign(messageVariable = metaBuilder.GetTemporary(typeof(object), "#message"), AstUtils.Box(argsBuilder[0]))
                             )
                         )) {
                             // ReinitializeException(<result>, #message)
-                            metaBuilder.Result = Ast.Call(null, new Func<RubyContext, Exception, object, Exception>(ReinitializeException).Method,
+                            metaBuilder.Result = Ast.Call(null, new Func<RubyContext, Exception, object, Exception>(ReinitializeException).GetMethodInfo(),
                                 AstUtils.Convert(args.MetaContext.Expression, typeof(RubyContext)),
                                 metaBuilder.Result,
                                 messageVariable ?? AstUtils.Box(argsBuilder[0])
@@ -166,9 +166,31 @@ namespace IronRuby.Builtins {
         }
 
         [RubyMethod("to_s")]
-        [RubyMethod("to_str")]
         public static object StringRepresentation(Exception/*!*/ self) {
             return RubyExceptionData.GetInstance(self).Message;
+        }
+
+        /// <summary>Notes: An exception can be compared with any other object that has a 'message' and 'backtrace' method</summary>
+        [RubyMethod("==")]
+        public static bool Equal(
+            UnaryOpStorage/*!*/ messageStorage, UnaryOpStorage/*!*/ backtraceStorage, BinaryOpStorage/*!*/stringEqlStorage, 
+            BinaryOpStorage/*!*/ arrayEqlStorage, RespondToStorage/*!*/ respondTo, Exception/*!*/ self, object/*!*/ other) {
+
+            if (!Protocols.RespondTo(respondTo, other, "message") || !Protocols.RespondTo(respondTo, other, "backtrace"))
+                return false;
+
+            var messageSite = messageStorage.GetCallSite("message");
+            var selfMessage = messageSite.Target(messageSite, self);
+            var otherMessage = messageSite.Target(messageSite, other);
+
+            var backtraceSite = backtraceStorage.GetCallSite("backtrace");
+            var selfBacktrace = backtraceSite.Target(backtraceSite, self) as System.Collections.IList;
+            var otherBacktrace = backtraceSite.Target(backtraceSite, other);
+            
+            var stringEqlSite = stringEqlStorage.GetCallSite("==");
+
+            return true.Equals(stringEqlSite.Target(stringEqlSite, selfMessage, otherMessage))
+                && RubyArray.Equals(arrayEqlStorage, selfBacktrace, otherBacktrace);
         }
 
         [RubyMethod("inspect", RubyMethodAttributes.PublicInstance)]

@@ -10,8 +10,6 @@ class SysModuleTest(unittest.TestCase):
         test.test_support.reap_children()
 
     def test_original_displayhook(self):
-        if test.test_support.due_to_ironpython_bug("http://tkbgitvstfat01:8080/WorkItemTracking/WorkItem.aspx?artifactMoniker=148342"):
-            return
         import __builtin__
         savestdout = sys.stdout
         out = cStringIO.StringIO()
@@ -36,8 +34,6 @@ class SysModuleTest(unittest.TestCase):
         sys.stdout = savestdout
 
     def test_lost_displayhook(self):
-        if test.test_support.due_to_ironpython_bug("http://tkbgitvstfat01:8080/WorkItemTracking/WorkItem.aspx?artifactMoniker=148342"): 
-            return
         olddisplayhook = sys.displayhook
         del sys.displayhook
         code = compile("42", "<string>", "single")
@@ -45,8 +41,6 @@ class SysModuleTest(unittest.TestCase):
         sys.displayhook = olddisplayhook
 
     def test_custom_displayhook(self):
-        if test.test_support.due_to_ironpython_bug("http://tkbgitvstfat01:8080/WorkItemTracking/WorkItem.aspx?artifactMoniker=148342"):
-            return
         olddisplayhook = sys.displayhook
         def baddisplayhook(obj):
             raise ValueError
@@ -55,14 +49,12 @@ class SysModuleTest(unittest.TestCase):
         self.assertRaises(ValueError, eval, code)
         sys.displayhook = olddisplayhook
 
-    def test_original_excepthook(self):    
+    def test_original_excepthook(self):
         savestderr = sys.stderr
         err = cStringIO.StringIO()
         sys.stderr = err
-        if test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/WorkItem/View.aspx?WorkItemId=1042"):
-            eh = sys.excepthook
-        else:
-            eh = sys.__excepthook__
+
+        eh = sys.__excepthook__
 
         self.assertRaises(TypeError, eh)
         try:
@@ -81,8 +73,6 @@ class SysModuleTest(unittest.TestCase):
 
         # Verify that exc_info is present and matches exc, then clear it, and
         # check that it worked.
-        if test.test_support.due_to_ironpython_bug("http://tkbgitvstfat01:8080/WorkItemTracking/WorkItem.aspx?artifactMoniker=147596"):
-            return
         def clear_check(exc):
             typ, value, traceback = sys.exc_info()
             self.assertTrue(typ is not None)
@@ -130,7 +120,7 @@ class SysModuleTest(unittest.TestCase):
         try:
             sys.exit(0)
         except SystemExit, exc:
-            self.assertEquals(exc.code, 0)
+            self.assertEqual(exc.code, 0)
         except:
             self.fail("wrong exception")
         else:
@@ -141,7 +131,7 @@ class SysModuleTest(unittest.TestCase):
         try:
             sys.exit(42)
         except SystemExit, exc:
-            self.assertEquals(exc.code, 42)
+            self.assertEqual(exc.code, 42)
         except:
             self.fail("wrong exception")
         else:
@@ -151,7 +141,7 @@ class SysModuleTest(unittest.TestCase):
         try:
             sys.exit((42,))
         except SystemExit, exc:
-            self.assertEquals(exc.code, 42)
+            self.assertEqual(exc.code, 42)
         except:
             self.fail("wrong exception")
         else:
@@ -161,7 +151,7 @@ class SysModuleTest(unittest.TestCase):
         try:
             sys.exit("exit")
         except SystemExit, exc:
-            self.assertEquals(exc.code, "exit")
+            self.assertEqual(exc.code, "exit")
         except:
             self.fail("wrong exception")
         else:
@@ -171,14 +161,12 @@ class SysModuleTest(unittest.TestCase):
         try:
             sys.exit((17, 23))
         except SystemExit, exc:
-            self.assertEquals(exc.code, (17, 23))
+            self.assertEqual(exc.code, (17, 23))
         except:
             self.fail("wrong exception")
         else:
             self.fail("no exception")
 
-        if test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/workitem/28171"):
-            return
         # test that the exit machinery handles SystemExits properly
         import subprocess
         # both unnormalized...
@@ -217,17 +205,16 @@ class SysModuleTest(unittest.TestCase):
             # can't check more than the type, as the user might have changed it
             self.assertIsInstance(sys.getdefaultencoding(), str)
 
-    # testing sys.settrace() is done in test_trace.py
-    # testing sys.setprofile() is done in test_profile.py
+    # testing sys.settrace() is done in test_sys_settrace.py
+    # testing sys.setprofile() is done in test_sys_setprofile.py
 
+    @unittest.skipIf(sys.platform == 'cli', 'Not supported on IronPython.')
     def test_setcheckinterval(self):
-        if test.test_support.due_to_ironpython_bug("http://tkbgitvstfat01:8080/WorkItemTracking/WorkItem.aspx?artifactMoniker=148342"):
-            return
         self.assertRaises(TypeError, sys.setcheckinterval)
         orig = sys.getcheckinterval()
         for n in 0, 100, 120, orig: # orig last to restore starting state
             sys.setcheckinterval(n)
-            self.assertEquals(sys.getcheckinterval(), n)
+            self.assertEqual(sys.getcheckinterval(), n)
 
     def test_recursionlimit(self):
         self.assertRaises(TypeError, sys.getrecursionlimit, 42)
@@ -249,17 +236,17 @@ class SysModuleTest(unittest.TestCase):
         self.assertIsInstance(v[3], int)
         self.assertIsInstance(v[4], str)
         self.assertRaises(IndexError, operator.getitem, v, 5)
-        if test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/workitem/28171"):
-            return
         self.assertIsInstance(v.major, int)
         self.assertIsInstance(v.minor, int)
         self.assertIsInstance(v.build, int)
         self.assertIsInstance(v.platform, int)
         self.assertIsInstance(v.service_pack, str)
-        self.assertIsInstance(v.service_pack_minor, int)
-        self.assertIsInstance(v.service_pack_major, int)
-        self.assertIsInstance(v.suite_mask, int)
-        self.assertIsInstance(v.product_type, int)
+        if sys.platform != 'cli':
+            # These are not available on .NET
+            self.assertIsInstance(v.service_pack_minor, int)
+            self.assertIsInstance(v.service_pack_major, int)
+            self.assertIsInstance(v.suite_mask, int)
+            self.assertIsInstance(v.product_type, int)
         self.assertEqual(v[0], v.major)
         self.assertEqual(v[1], v.minor)
         self.assertEqual(v[2], v.build)
@@ -280,9 +267,8 @@ class SysModuleTest(unittest.TestCase):
             self.assertEqual(sys.getdlopenflags(), oldflags+1)
             sys.setdlopenflags(oldflags)
 
+    @unittest.skipIf(sys.platform == 'cli', 'Not supported on IronPython.')
     def test_refcount(self):
-        if test.test_support.due_to_ironpython_bug("http://tkbgitvstfat01:8080/WorkItemTracking/WorkItem.aspx?artifactMoniker=148342"):
-            return
         # n here must be a global in order for this test to pass while
         # tracing with a python function.  Tracing calls PyFrame_FastToLocals
         # which will add a copy of any locals to the frame object, causing
@@ -298,8 +284,6 @@ class SysModuleTest(unittest.TestCase):
             self.assertIsInstance(sys.gettotalrefcount(), int)
 
     def test_getframe(self):
-        if test.test_support.due_to_ironpython_bug("http://tkbgitvstfat01:8080/WorkItemTracking/WorkItem.aspx?artifactMoniker=303467"):
-            return
         self.assertRaises(TypeError, sys._getframe, 42, 42)
         self.assertRaises(ValueError, sys._getframe, 2000000000)
         self.assertTrue(
@@ -308,6 +292,7 @@ class SysModuleTest(unittest.TestCase):
         )
 
     # sys._current_frames() is a CPython-only gimmick.
+    @unittest.skipIf(sys.platform == 'cli', 'Not supported on IronPython.')
     def test_current_frames(self):
         have_threads = True
         try:
@@ -350,34 +335,34 @@ class SysModuleTest(unittest.TestCase):
         # to its leave_g.wait().
         self.assertEqual(len(thread_info), 1)
         thread_id = thread_info[0]
-        if not test.test_support.due_to_ironpython_bug("http://tkbgitvstfat01:8080/WorkItemTracking/WorkItem.aspx?artifactMoniker=360205"):
-            d = sys._current_frames()
 
-            main_id = thread.get_ident()
-            self.assertIn(main_id, d)
-            self.assertIn(thread_id, d)
+        d = sys._current_frames()
 
-            # Verify that the captured main-thread frame is _this_ frame.
-            frame = d.pop(main_id)
-            self.assertTrue(frame is sys._getframe())
+        main_id = thread.get_ident()
+        self.assertIn(main_id, d)
+        self.assertIn(thread_id, d)
 
-            # Verify that the captured thread frame is blocked in g456, called
-            # from f123.  This is a litte tricky, since various bits of
-            # threading.py are also in the thread's call stack.
-            frame = d.pop(thread_id)
-            stack = traceback.extract_stack(frame)
-            for i, (filename, lineno, funcname, sourceline) in enumerate(stack):
-                if funcname == "f123":
-                    break
-            else:
-                self.fail("didn't find f123() on thread's call stack")
+        # Verify that the captured main-thread frame is _this_ frame.
+        frame = d.pop(main_id)
+        self.assertTrue(frame is sys._getframe())
 
-            self.assertEqual(sourceline, "g456()")
+        # Verify that the captured thread frame is blocked in g456, called
+        # from f123.  This is a litte tricky, since various bits of
+        # threading.py are also in the thread's call stack.
+        frame = d.pop(thread_id)
+        stack = traceback.extract_stack(frame)
+        for i, (filename, lineno, funcname, sourceline) in enumerate(stack):
+            if funcname == "f123":
+                break
+        else:
+            self.fail("didn't find f123() on thread's call stack")
 
-            # And the next record must be for g456().
-            filename, lineno, funcname, sourceline = stack[i+1]
-            self.assertEqual(funcname, "g456")
-            self.assertIn(sourceline, ["leave_g.wait()", "entered_g.set()"])
+        self.assertEqual(sourceline, "g456()")
+
+        # And the next record must be for g456().
+        filename, lineno, funcname, sourceline = stack[i+1]
+        self.assertEqual(funcname, "g456")
+        self.assertIn(sourceline, ["leave_g.wait()", "entered_g.set()"])
 
         # Reap the spawned thread.
         leave_g.set()
@@ -393,8 +378,7 @@ class SysModuleTest(unittest.TestCase):
         self.assertTrue(d[0] is sys._getframe())
 
     def test_attributes(self):
-        if not test.test_support.due_to_ironpython_bug("http://tkbgitvstfat01:8080/WorkItemTracking/WorkItem.aspx?artifactMoniker=148342"):
-            self.assertIsInstance(sys.api_version, int)
+        self.assertIsInstance(sys.api_version, int)
         self.assertIsInstance(sys.argv, list)
         self.assertIn(sys.byteorder, ("little", "big"))
         self.assertIsInstance(sys.builtin_module_names, tuple)
@@ -403,12 +387,14 @@ class SysModuleTest(unittest.TestCase):
         self.assertIsInstance(sys.executable, basestring)
         self.assertEqual(len(sys.float_info), 11)
         self.assertEqual(sys.float_info.radix, 2)
-        if not test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/workitem/28171"):
-            self.assertEqual(len(sys.long_info), 2)
+        self.assertEqual(len(sys.long_info), 2)
+        if sys.platform != 'cli':
             self.assertTrue(sys.long_info.bits_per_digit % 5 == 0)
-            self.assertTrue(sys.long_info.sizeof_digit >= 1)
-            self.assertEqual(type(sys.long_info.bits_per_digit), int)
-            self.assertEqual(type(sys.long_info.sizeof_digit), int)
+        else:
+            self.assertTrue(sys.long_info.bits_per_digit % 8 == 0)
+        self.assertTrue(sys.long_info.sizeof_digit >= 1)
+        self.assertEqual(type(sys.long_info.bits_per_digit), int)
+        self.assertEqual(type(sys.long_info.sizeof_digit), int)
         self.assertIsInstance(sys.hexversion, int)
         self.assertIsInstance(sys.maxint, int)
         if test.test_support.have_unicode:
@@ -422,8 +408,6 @@ class SysModuleTest(unittest.TestCase):
         self.assertIsInstance(vi[0], int)
         self.assertIsInstance(vi[1], int)
         self.assertIsInstance(vi[2], int)
-        if test.test_support.due_to_ironpython_bug("http://tkbgitvstfat01:8080/WorkItemTracking/WorkItem.aspx?artifactMoniker=148342"):
-            return
         self.assertIn(vi[3], ("alpha", "beta", "candidate", "final"))
         self.assertIsInstance(vi[4], int)
         self.assertIsInstance(vi.major, int)
@@ -443,8 +427,7 @@ class SysModuleTest(unittest.TestCase):
     def test_43581(self):
         # Can't use sys.stdout, as this is a cStringIO object when
         # the test runs under regrtest.
-        if not test.test_support.due_to_ironpython_bug("http://tkbgitvstfat01:8080/WorkItemTracking/WorkItem.aspx?artifactMoniker=147900"):
-            self.assertTrue(sys.__stdout__.encoding == sys.__stderr__.encoding)
+        self.assertTrue(sys.__stdout__.encoding == sys.__stderr__.encoding)
 
     def test_sys_flags(self):
         self.assertTrue(sys.flags)
@@ -457,13 +440,12 @@ class SysModuleTest(unittest.TestCase):
             self.assertEqual(type(getattr(sys.flags, attr)), int, attr)
         self.assertTrue(repr(sys.flags))
 
+    @unittest.skipIf(sys.platform == 'cli', 'Not supported on IronPython.')
     def test_clear_type_cache(self):
-        if not test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/WorkItem/View.aspx?WorkItemId=17460"):
-            sys._clear_type_cache()
+        sys._clear_type_cache()
 
+    @unittest.skipIf(sys.platform == 'cli', 'PYTHONIOENCODING not supported on IronPython.')
     def test_ioencoding(self):
-        if test.test_support.due_to_ironpython_bug("http://tkbgitvstfat01:8080/WorkItemTracking/WorkItem.aspx?artifactMoniker=301267"):
-            return
         import subprocess
         env = dict(os.environ)
 
@@ -483,14 +465,10 @@ class SysModuleTest(unittest.TestCase):
         self.assertEqual(out, '?')
 
     def test_call_tracing(self):
-        if test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/workitem/28171"):
-            return
         self.assertEqual(sys.call_tracing(str, (2,)), "2")
         self.assertRaises(TypeError, sys.call_tracing, str, 2)
 
     def test_executable(self):
-        if test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/workitem/15513"):
-            return
         # Issue #7774: Ensure that sys.executable is an empty string if argv[0]
         # has been set to an non existent program name and Python is unable to
         # retrieve the real program name
@@ -504,7 +482,31 @@ class SysModuleTest(unittest.TestCase):
         executable = p.communicate()[0].strip()
         p.wait()
         self.assertIn(executable, ["''", repr(sys.executable)])
+    
+    def test_implementation(self):
+        # This test applies to all implementations equally.
 
+        levels = {'alpha': 0xA, 'beta': 0xB, 'candidate': 0xC, 'release': 0xF}
+
+        self.assertTrue(hasattr(sys.implementation, 'name'))
+        self.assertTrue(hasattr(sys.implementation, 'version'))
+        self.assertTrue(hasattr(sys.implementation, 'hexversion'))
+        self.assertTrue(hasattr(sys.implementation, 'cache_tag'))
+
+        version = sys.implementation.version
+        self.assertEqual(version[:2], (version.major, version.minor))
+
+        hexversion = (version.major << 24 | version.minor << 16 |
+                      version.micro << 8 | levels[version.releaselevel] << 4 |
+                      version.serial << 0)
+        self.assertEqual(sys.implementation.hexversion, hexversion)
+
+        # PEP 421 requires that .name be lower case.
+        self.assertEqual(sys.implementation.name,
+                         sys.implementation.name.lower())
+
+
+@unittest.skipIf(sys.platform == 'cli', 'No module _testcapi.')
 class SizeofTest(unittest.TestCase):
 
     TPFLAGS_HAVE_GC = 1<<14
@@ -523,13 +525,9 @@ class SizeofTest(unittest.TestCase):
         if hasattr(sys, "gettotalrefcount"):
             self.header += '2P'
             self.vheader += '2P'
-        if test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/workitem/28171"):
-            self.longdigit = 4
-        else:
-            self.longdigit = sys.long_info.sizeof_digit
-        if not test.test_support.due_to_ironpython_bug("no _testcapi module"):
-            import _testcapi
-            self.gc_headsize = _testcapi.SIZEOF_PYGC_HEAD
+        self.longdigit = sys.long_info.sizeof_digit
+        import _testcapi
+        self.gc_headsize = _testcapi.SIZEOF_PYGC_HEAD
         self.file = open(test.test_support.TESTFN, 'wb')
 
     def tearDown(self):
@@ -538,7 +536,6 @@ class SizeofTest(unittest.TestCase):
 
     def check_sizeof(self, o, size):
         result = sys.getsizeof(o)
-        if test.test_support.due_to_ironpython_incompatibility("Size of CLR-based objects can be different"): return
         if ((type(o) == type) and (o.__flags__ & self.TPFLAGS_HEAPTYPE) or\
            ((type(o) != type) and (type(o).__flags__ & self.TPFLAGS_HAVE_GC))):
             size += self.gc_headsize
@@ -559,20 +556,16 @@ class SizeofTest(unittest.TestCase):
         # Check that the gc header size is added to objects tracked by the gc.
         h = self.header
         size = self.calcsize
-        if not test.test_support.due_to_ironpython_bug("no _testcapi module"):
-            gc_header_size = self.gc_headsize
+        gc_header_size = self.gc_headsize
         # bool objects are not gc tracked
-        if not test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/WorkItem/View.aspx?WorkItemId=17460"):
-            self.assertEqual(sys.getsizeof(True), size(h + 'l'))
+        self.assertEqual(sys.getsizeof(True), size(h + 'l'))
         # but lists are
-        if not test.test_support.due_to_ironpython_bug("no _testcapi module"):
-            self.assertEqual(sys.getsizeof([]), size(h + 'P PP') + gc_header_size)
+        self.assertEqual(sys.getsizeof([]), size(h + 'P PP') + gc_header_size)
 
     def test_default(self):
         h = self.header
         size = self.calcsize
-        if not test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/WorkItem/View.aspx?WorkItemId=17460"):
-            self.assertEqual(sys.getsizeof(True, -1), size(h + 'l'))
+        self.assertEqual(sys.getsizeof(True, -1), size(h + 'l'))
 
     def test_objecttypes(self):
         # check all types defined in Objects/
@@ -590,10 +583,7 @@ class SizeofTest(unittest.TestCase):
         # bytearray
         samples = ['', 'u'*100000]
         for sample in samples:
-            if test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/WorkItem/View.aspx?WorkItemId=21334"):
-                x = bytearray(sample, 'utf-8')
-            else:
-                x = bytearray(sample)
+            x = bytearray(sample)
             check(x, size(vh + 'iPP') + x.__alloc__() * self.c)
         # bytearray_iterator
         check(iter(bytearray()), size(h + 'PP'))
@@ -655,10 +645,9 @@ class SizeofTest(unittest.TestCase):
         # ellipses
         check(Ellipsis, size(h + ''))
         # EncodingMap
-        if not test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/WorkItem/View.aspx?WorkItemId=17454"):
-            import codecs, encodings.iso8859_3
-            x = codecs.charmap_build(encodings.iso8859_3.decoding_table)
-            check(x, size(h + '32B2iB'))
+        import codecs, encodings.iso8859_3
+        x = codecs.charmap_build(encodings.iso8859_3.decoding_table)
+        check(x, size(h + '32B2iB'))
         # enumerate
         check(enumerate([]), size(h + 'l3P'))
         # file
@@ -671,12 +660,11 @@ class SizeofTest(unittest.TestCase):
         import inspect
         CO_MAXBLOCKS = 20
         x = inspect.currentframe()
-        if not test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/WorkItem/View.aspx?WorkItemId=15399"):
-            ncells = len(x.f_code.co_cellvars)
-            nfrees = len(x.f_code.co_freevars)
-            extras = x.f_code.co_stacksize + x.f_code.co_nlocals +\
-                     ncells + nfrees - 1
-            check(x, size(vh + '12P3i' + CO_MAXBLOCKS*'3i' + 'P' + extras*'P'))
+        ncells = len(x.f_code.co_cellvars)
+        nfrees = len(x.f_code.co_freevars)
+        extras = x.f_code.co_stacksize + x.f_code.co_nlocals +\
+                 ncells + nfrees - 1
+        check(x, size(vh + '12P3i' + CO_MAXBLOCKS*'3i' + 'P' + extras*'P'))
         # function
         def func(): pass
         check(func, size(h + '9P'))
@@ -718,10 +706,7 @@ class SizeofTest(unittest.TestCase):
         check(0L, size(vh))
         check(1L, size(vh) + self.longdigit)
         check(-1L, size(vh) + self.longdigit)
-        if test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/workitem/28171"):
-            PyLong_BASE = 2**32
-        else:
-            PyLong_BASE = 2**sys.long_info.bits_per_digit
+        PyLong_BASE = 2**sys.long_info.bits_per_digit
         check(long(PyLong_BASE), size(vh) + 2*self.longdigit)
         check(long(PyLong_BASE**2-1), size(vh) + 2*self.longdigit)
         check(long(PyLong_BASE**2), size(vh) + 3*self.longdigit)
@@ -792,13 +777,12 @@ class SizeofTest(unittest.TestCase):
         import types
         check(types.NotImplementedType, s)
         # unicode
-        if not test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/WorkItem/View.aspx?WorkItemId=1214"):
-            usize = len(u'\0'.encode('unicode-internal'))
-            samples = [u'', u'1'*100]
-            # we need to test for both sizes, because we don't know if the string
-            # has been cached
-            for s in samples:
-                check(s, size(h + 'PPlP') + usize * (len(s) + 1))
+        usize = len(u'\0'.encode('unicode-internal'))
+        samples = [u'', u'1'*100]
+        # we need to test for both sizes, because we don't know if the string
+        # has been cached
+        for s in samples:
+            check(s, size(h + 'PPlP') + usize * (len(s) + 1))
         # weakref
         import weakref
         check(weakref.ref(int), size(h + '2Pl2P'))
@@ -817,9 +801,8 @@ class SizeofTest(unittest.TestCase):
         size = self.calcsize
         check = self.check_sizeof
         # _ast.AST
-        if not test.test_support.due_to_ironpython_bug("http://ironpython.codeplex.com/WorkItem/View.aspx?WorkItemId=21088"):
-            import _ast
-            check(_ast.AST(), size(h + ''))
+        import _ast
+        check(_ast.AST(), size(h + ''))
         # imp.NullImporter
         import imp
         check(imp.NullImporter(self.file.name), size(h + ''))

@@ -31,7 +31,7 @@ using IronPython.Runtime;
 using IronPython.Runtime.Binding;
 using IronPython.Runtime.Operations;
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using MSAst = System.Linq.Expressions;
 #else
 using MSAst = Microsoft.Scripting.Ast;
@@ -81,7 +81,7 @@ namespace IronPython.Compiler.Ast {
 
         public void AddInstructions(LightCompiler compiler) {
             compiler.Compile(_target);
-            switch (Type.GetTypeCode(_binder.Type)) {
+            switch (_binder.Type.GetTypeCode()) {
                 case TypeCode.Boolean:
                     compiler.Instructions.Emit(BooleanConversionInstruction.Instance);
                     break;

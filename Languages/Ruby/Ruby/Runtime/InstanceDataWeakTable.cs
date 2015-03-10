@@ -15,10 +15,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
-using SRC = System.Runtime.CompilerServices;
-using System.Reflection;
 using System.Diagnostics;
+using System.Reflection;
+using System.Text;
+using Microsoft.Scripting;
+using Microsoft.Scripting.Utils;
+using SRC = System.Runtime.CompilerServices;
 
 namespace IronRuby.Runtime {
 
@@ -65,7 +67,7 @@ namespace IronRuby.Runtime {
                     }
                 }
 
-                return SRC.RuntimeHelpers.GetHashCode(obj);
+                return ReferenceEqualityComparer<object>.Instance.GetHashCode(obj);
             }
         }
         #endregion
@@ -74,7 +76,7 @@ namespace IronRuby.Runtime {
 
         int _version, _cleanupVersion;
 
-#if SILVERLIGHT // GC
+#if SILVERLIGHT || WIN8 || WP75 // GC
         WeakReference _cleanupGC = new WeakReference(new object());
 #else
         int _cleanupGC = 0;
@@ -85,9 +87,11 @@ namespace IronRuby.Runtime {
 
             // WeakReferences can become zero only during the GC.
             bool garbage_collected;
-#if SILVERLIGHT // GC.CollectionCount
+#if SILVERLIGHT || WIN8 || WP75 // GC.CollectionCount
             garbage_collected = !_cleanupGC.IsAlive;
-            if (garbage_collected) _cleanupGC = new WeakReference(new object());
+            if (garbage_collected) {
+                _cleanupGC = new WeakReference(new object());
+            }
 #else
             int currentGC = GC.CollectionCount(0);
             garbage_collected = currentGC != _cleanupGC;
@@ -157,7 +161,9 @@ namespace IronRuby.Runtime {
             Cleanup();
             // _dict might be a new Dictionary after Cleanup(),
             // so use the field directly
-            _dict.Add(new WeakReference(key, true), value);
+
+            // CF throws doesn't support long weak references (NotSuportedException is thrown)
+            _dict.Add(new WeakReference(key, !PlatformAdaptationLayer.IsCompactFramework), value);
         }
     }
 

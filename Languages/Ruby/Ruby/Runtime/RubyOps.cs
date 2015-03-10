@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using MSA = System.Linq.Expressions;
 #else
 using MSA = Microsoft.Scripting.Ast;
@@ -284,15 +284,19 @@ namespace IronRuby.Runtime {
 
         [Emitted]
         public static Proc/*!*/ DefineBlock(RubyScope/*!*/ scope, object self, BlockDispatcher/*!*/ dispatcher, object/*!*/ clrMethod) {
+#if !WIN8
             // DLR closures should not be used:
             Debug.Assert(!(((Delegate)clrMethod).Target is Closure) || ((Closure)((Delegate)clrMethod).Target).Locals == null);
+#endif
             return new Proc(ProcKind.Block, self, scope, dispatcher.SetMethod(clrMethod));
         }
 
         [Emitted]
         public static Proc/*!*/ DefineLambda(RubyScope/*!*/ scope, object self, BlockDispatcher/*!*/ dispatcher, object/*!*/ clrMethod) {
+#if !WIN8
             // DLR closures should not be used:
             Debug.Assert(!(((Delegate)clrMethod).Target is Closure) || ((Closure)((Delegate)clrMethod).Target).Locals == null);
+#endif
             return new Proc(ProcKind.Lambda, self, scope, dispatcher.SetMethod(clrMethod));
         }
 
@@ -2139,8 +2143,11 @@ namespace IronRuby.Runtime {
 
         [Emitted] // ProtocolConversionAction
         public static IList/*!*/ ToArrayValidator(string/*!*/ className, object obj) {
+            if (obj == null) // to_ary is allowed to return nil
+                return null;
+
             var result = obj as IList;
-            if (result == null) {
+            if (result == null) { // but it's not allowed to return other types
                 throw RubyExceptions.CreateReturnTypeError(className, "to_ary", "Array");
             }
             return result;
@@ -2470,7 +2477,18 @@ namespace IronRuby.Runtime {
             RubyOps.GetInstanceData(ref instanceData).IsUntrusted = untrusted;
         }
 
-#if !SILVERLIGHT // serialization
+        [Emitted]
+        public static string/*!*/ GetDebuggerDisplayValue(RubyClass/*!*/ cls, object obj) {
+            return cls.Context.Inspect(obj).ConvertToString();
+        }
+
+        [Emitted]
+        public static string/*!*/ GetDebuggerDisplayType(RubyClass/*!*/ cls) {
+            return cls.Name;
+        }
+
+#if FEATURE_SERIALIZATION
+        // TODO: Remove this, it isn't used by Marshal anymore
         [Emitted(UseReflection = true)] //RubyTypeBuilder
         public static void DeserializeObject(out RubyInstanceData/*!*/ instanceData, out RubyClass/*!*/ immediateClass, SerializationInfo/*!*/ info) {
             immediateClass = (RubyClass)info.GetValue(RubyUtils.SerializationInfoClassKey, typeof(RubyClass));
@@ -2486,6 +2504,7 @@ namespace IronRuby.Runtime {
             instanceData = newInstanceData;
         }
 
+        // TODO: Remove this, it isn't used by Marshal anymore
         [Emitted(UseReflection = true)] //RubyTypeBuilder
         public static void SerializeObject(RubyInstanceData instanceData, RubyClass/*!*/ immediateClass, SerializationInfo/*!*/ info) {
             info.AddValue(RubyUtils.SerializationInfoClassKey, immediateClass, typeof(RubyClass));

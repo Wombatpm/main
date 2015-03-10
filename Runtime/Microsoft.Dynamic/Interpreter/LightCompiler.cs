@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 using Microsoft.Scripting.Ast;
 #else
@@ -21,13 +21,17 @@ using Microsoft.Scripting.Ast;
 #endif
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
-using Microsoft.Scripting.Utils;
-using AstUtils = Microsoft.Scripting.Ast.Utils;
-using Microsoft.Scripting.Runtime;
 using System.Runtime.CompilerServices;
+using System.Reflection.Emit;
+
+using AstUtils = Microsoft.Scripting.Ast.Utils;
+using Microsoft.Scripting.Utils;
+using Microsoft.Scripting.Runtime;
+using System.Security;
 
 namespace Microsoft.Scripting.Interpreter {
     public sealed class ExceptionHandler {
@@ -203,7 +207,7 @@ namespace Microsoft.Scripting.Interpreter {
         }
 
         internal static Expression Unbox(Expression strongBoxExpression) {
-            return Expression.Field(strongBoxExpression, typeof(StrongBox<object>).GetField("Value"));
+            return Expression.Field(strongBoxExpression, typeof(StrongBox<object>).GetDeclaredField("Value"));
         }
 
         internal LightDelegateCreator CompileTop(LambdaExpression node) {
@@ -265,7 +269,7 @@ namespace Microsoft.Scripting.Interpreter {
 
         private void CompileDefaultExpression(Type type) {
             if (type != typeof(void)) {
-                if (type.IsValueType) {
+                if (type.IsValueType()) {
                     object value = ScriptingRuntimeHelpers.GetPrimitiveDefaultValue(type);
                     if (value != null) {
                         _instructions.EmitLoad(value);
@@ -421,9 +425,9 @@ namespace Microsoft.Scripting.Interpreter {
             }
 
             if (index.Indexer != null) {
-                _instructions.EmitCall(index.Indexer.GetGetMethod(true));
+                EmitCall(index.Indexer.GetGetMethod(true));
             } else if (index.Arguments.Count != 1) {
-                _instructions.EmitCall(index.Object.Type.GetMethod("Get", BindingFlags.Public | BindingFlags.Instance));
+                EmitCall(index.Object.Type.GetMethod("Get", BindingFlags.Public | BindingFlags.Instance));
             } else {
                 _instructions.EmitGetArrayItem(index.Object.Type);
             }
@@ -450,9 +454,9 @@ namespace Microsoft.Scripting.Interpreter {
             Compile(node.Right);
 
             if (index.Indexer != null) {
-                _instructions.EmitCall(index.Indexer.GetSetMethod(true));
+                EmitCall(index.Indexer.GetSetMethod(true));
             } else if (index.Arguments.Count != 1) {
-                _instructions.EmitCall(index.Object.Type.GetMethod("Set", BindingFlags.Public | BindingFlags.Instance));
+                EmitCall(index.Object.Type.GetMethod("Set", BindingFlags.Public | BindingFlags.Instance));
             } else {
                 _instructions.EmitSetArrayItem(index.Object.Type);
             }
@@ -471,11 +475,11 @@ namespace Microsoft.Scripting.Interpreter {
                 if (!asVoid) {
                     LocalDefinition local = _locals.DefineLocal(Expression.Parameter(node.Right.Type), start);
                     _instructions.EmitAssignLocal(local.Index);
-                    _instructions.EmitCall(method);
+                    EmitCall(method);
                     _instructions.EmitLoadLocal(local.Index);
                     _locals.UndefineLocal(local, _instructions.Count);
                 } else {
-                    _instructions.EmitCall(method);
+                    EmitCall(method);
                 }
                 return;
             }
@@ -538,7 +542,7 @@ namespace Microsoft.Scripting.Interpreter {
             if (node.Method != null) {
                 Compile(node.Left);
                 Compile(node.Right);
-                _instructions.EmitCall(node.Method);
+                EmitCall(node.Method);
             } else {
                 switch (node.NodeType) {
                     case ExpressionType.ArrayIndex:
@@ -580,14 +584,14 @@ namespace Microsoft.Scripting.Interpreter {
         }
 
         private void CompileEqual(Expression left, Expression right) {
-            Debug.Assert(left.Type == right.Type || !left.Type.IsValueType && !right.Type.IsValueType);
+            Debug.Assert(left.Type == right.Type || !left.Type.IsValueType() && !right.Type.IsValueType());
             Compile(left);
             Compile(right);
             _instructions.EmitEqual(left.Type);
         }
 
         private void CompileNotEqual(Expression left, Expression right) {
-            Debug.Assert(left.Type == right.Type || !left.Type.IsValueType && !right.Type.IsValueType);
+            Debug.Assert(left.Type == right.Type || !left.Type.IsValueType() && !right.Type.IsValueType());
             Compile(left);
             Compile(right);
             _instructions.EmitNotEqual(left.Type);
@@ -634,7 +638,7 @@ namespace Microsoft.Scripting.Interpreter {
 
                 // We should be able to ignore Int32ToObject
                 if (node.Method != Runtime.ScriptingRuntimeHelpers.Int32ToObjectMethod) {
-                    _instructions.EmitCall(node.Method);
+                    EmitCall(node.Method);
                 }
             } else if (node.Type == typeof(void)) {
                 CompileAsVoid(node.Operand);
@@ -651,8 +655,8 @@ namespace Microsoft.Scripting.Interpreter {
                 return;
             }
 
-            TypeCode from = Type.GetTypeCode(typeFrom);
-            TypeCode to = Type.GetTypeCode(typeTo);
+            TypeCode from = typeFrom.GetTypeCode();
+            TypeCode to = typeTo.GetTypeCode();
             if (TypeUtils.IsNumeric(from) && TypeUtils.IsNumeric(to)) {
                 if (isChecked) {
                     _instructions.EmitNumericConvertChecked(from, to);
@@ -681,7 +685,7 @@ namespace Microsoft.Scripting.Interpreter {
             
             if (node.Method != null) {
                 Compile(node.Operand);
-                _instructions.EmitCall(node.Method);
+                EmitCall(node.Method);
             } else {
                 switch (node.NodeType) {
                     case ExpressionType.Not:
@@ -1198,7 +1202,7 @@ namespace Microsoft.Scripting.Interpreter {
             // also could be a mutable value type, Delegate.CreateDelegate and MethodInfo.Invoke both can't handle this, we
             // need to generate code.
             if (!CollectionUtils.TrueForAll(parameters, (p) => !p.ParameterType.IsByRef) ||
-                (!node.Method.IsStatic && node.Method.DeclaringType.IsValueType && !node.Method.DeclaringType.IsPrimitive)) {
+                (!node.Method.IsStatic && node.Method.DeclaringType.IsValueType() && !node.Method.DeclaringType.IsPrimitive())) {
                 _forceCompile = true;
             }
 
@@ -1226,8 +1230,32 @@ namespace Microsoft.Scripting.Interpreter {
                 foreach (var arg in node.Arguments) {
                     Compile(arg);
                 }
-                _instructions.EmitCall(node.Method, parameters);
+
+                EmitCall(node.Method, parameters);
             }
+        }
+
+        public void EmitCall(MethodInfo method) {
+            EmitCall(method, method.GetParameters());
+        }
+
+        public void EmitCall(MethodInfo method, ParameterInfo[] parameters) {
+            Instruction instruction;
+
+            try {
+                instruction = CallInstruction.Create(method, parameters);
+            } catch (SecurityException) {
+                _forceCompile = true;
+                
+                _instructions.Emit(new PopNInstruction((method.IsStatic ? 0 : 1) + parameters.Length));
+                if (method.ReturnType != typeof(void)) {
+                    _instructions.EmitLoad(null);
+                }
+
+                return;
+            }
+
+            _instructions.Emit(instruction);
         }
 
         private void CompileNewExpression(Expression expr) {
@@ -1235,7 +1263,11 @@ namespace Microsoft.Scripting.Interpreter {
 
             if (node.Constructor != null) {
                 var parameters = node.Constructor.GetParameters();
-                if (!CollectionUtils.TrueForAll(parameters, (p) => !p.ParameterType.IsByRef)) {
+                if (!CollectionUtils.TrueForAll(parameters, (p) => !p.ParameterType.IsByRef)
+#if FEATURE_LCG
+                     || node.Constructor.DeclaringType == typeof(DynamicMethod)
+#endif
+                ) {
                     _forceCompile = true;
                 }
             }
@@ -1246,7 +1278,7 @@ namespace Microsoft.Scripting.Interpreter {
                 }
                 _instructions.EmitNew(node.Constructor);
             } else {
-                Debug.Assert(expr.Type.IsValueType);
+                Debug.Assert(expr.Type.IsValueType());
                 _instructions.EmitDefaultValue(node.Type);
             }
         }
@@ -1278,7 +1310,7 @@ namespace Microsoft.Scripting.Interpreter {
                 if (node.Expression != null) {
                     Compile(node.Expression);
                 }
-                _instructions.EmitCall(method);
+                EmitCall(method);
                 return;
             }
 
@@ -1448,7 +1480,7 @@ namespace Microsoft.Scripting.Interpreter {
             Compile(node.Expression);
 
             // use TypeEqual for sealed types:
-            if (node.TypeOperand.IsSealed) {
+            if (node.TypeOperand.IsSealed()) {
                 _instructions.EmitLoad(node.TypeOperand);
                 _instructions.EmitTypeEquals();
             } else {

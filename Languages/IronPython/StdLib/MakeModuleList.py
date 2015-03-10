@@ -34,7 +34,7 @@ excludedFiles       = []
 
 #Automatically determine what's currently not working under IronPython
 sys.path.append(nt.environ["DLR_ROOT"] + r"\Languages\IronPython\Tests\Tools")
-base_dir = nt._getfullpathname(nt.environ["DLR_ROOT"] + r"\External.LCA_RESTRICTED\Languages\CPython\27")
+base_dir = nt._getfullpathname(nt.environ["DLR_ROOT"] + r"\External.LCA_RESTRICTED\Languages\IronPython\27")
 
 import stdmodules
 BROKEN_LIST = stdmodules.main(base_dir)
@@ -49,7 +49,9 @@ if len(BROKEN_LIST)<10:
 #Specify Packages and Modules that should not be included here.
 excludedDirectories += [
                         "/Lib/test",
+                        "/Lib/idlelib",
                         "/Lib/lib-tk",
+                        "/Lib/site-packages"
                         ]
 excludedDirectories += [x for x in BROKEN_LIST if not x.endswith(".py")]
 
@@ -90,7 +92,7 @@ for dirpath, dirnames, filenames in os.walk(base_dir):
                 break
         else:
             for excluded in excludedDirectories:
-                if filename.lower().startswith(excluded):
+                if filename.lower().startswith(excluded) or r'\test' in filename.lower():
                     break
             else:
                 sub_name = filename[len(base_dir) + 1:]
@@ -98,12 +100,14 @@ for dirpath, dirnames, filenames in os.walk(base_dir):
                     sub_name = sub_name[4:]
                     if sub_name.endswith('.exe'):    
                         continue
-                    if (FileInfo(filename).Attributes & FileAttributes.ReadOnly):
-                        files.append('    <Content Include="$(StdLibPath)\%s" />\n' % (sub_name, ))
+                    
+                    files.append('    <Content Include="$(StdLibPath)\\%s" />\n' % (sub_name, ))
 
+# Add site-packages manually
+files.append('    <Content Include="$(StdLibPath)\\site-packages\\README.txt" />\n')
 
 print 'excluding these files:'
-for excluded_file in excludedFiles:
+for excluded_file in excludedDirectories + excludedFiles:
     print excluded_file
 
 file_list = ''.join(files)

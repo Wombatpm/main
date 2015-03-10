@@ -118,7 +118,7 @@ namespace IronRuby.Builtins {
         }
 
         public bool IsInterface {
-            get { return _typeTracker != null && _typeTracker.Type.IsInterface; }
+            get { return _typeTracker != null && _typeTracker.Type.IsInterface(); }
         }
 
         public bool IsClrModule {
@@ -247,7 +247,7 @@ namespace IronRuby.Builtins {
                     if (m != null) {
                         name = m.DebugName;
                     } else {
-                        name = RuntimeHelpers.GetHashCode(s).ToString("x");
+                        name = ReferenceEqualityComparer<object>.Instance.GetHashCode(s).ToString("x");
                     }
                     name = "S(" + name + ")";
                 } else {
@@ -287,7 +287,7 @@ namespace IronRuby.Builtins {
 
         // A list of extension methods included into this type or null if none were included.
         // { method-name -> methods }
-        internal Dictionary<string, List<ExtensionMethodInfo>> _extensionMethods;
+        private Dictionary<string, List<ExtensionMethodInfo>> _extensionMethods;
         
         #endregion
 
@@ -341,6 +341,7 @@ namespace IronRuby.Builtins {
             internal set { _name = value; }
         }
 
+        [Emitted]
         public RubyContext/*!*/ Context {
             get { return _context; }
         }
@@ -412,7 +413,7 @@ namespace IronRuby.Builtins {
                         Utils.Log(_name ?? "<anonymous>", "CT_INIT");
                         // TODO: use lock-free operations in initializers
                         _constantsInitializer(this);
-                    } else if (_typeTracker != null && !_typeTracker.Type.IsInterface) {
+                    } else if (_typeTracker != null && !_typeTracker.Type.IsInterface()) {
                         // Load types eagerly. We do this only for CLR types that have no constant initializer (not builtins) and 
                         // a constant access is performed (otherwise this method wouldn't be called).
                         // 
@@ -505,19 +506,19 @@ namespace IronRuby.Builtins {
             // TODO: Inherited generic overloads. We need a custom TypeGroup to do it right - part of the type group might be removed
 
             // TODO: protected types
-            var bindingFlags = BindingFlags.Public | BindingFlags.DeclaredOnly;
+            var bindingFlags = BindingFlags.Public;
             if (Context.DomainManager.Configuration.PrivateBinding) {
                 bindingFlags |= BindingFlags.NonPublic;
             }
 
             // if the constant is redefined/removed from the base class. This is similar to method overload inheritance.
-            Type[] types = _typeTracker.Type.GetNestedTypes(bindingFlags);
+            var types = _typeTracker.Type.GetDeclaredNestedTypes().WithBindingFlags(bindingFlags);
             var trackers = new List<TypeTracker>();
             var names = new List<string>();
             foreach (var type in types) {
                 TypeTracker tracker = (NestedTypeTracker)MemberTracker.FromMemberInfo(type);
 
-                var name = (type.IsGenericType) ? ReflectionUtils.GetNormalizedTypeName(type) : type.Name;
+                var name = (type.IsGenericType) ? ReflectionUtils.GetNormalizedTypeName(type.AsType()) : type.Name;
                 int index = names.IndexOf(name);
                 if (index != -1) {
                     trackers[index] = TypeGroup.UpdateTypeEntity(trackers[index], tracker);
@@ -790,7 +791,8 @@ namespace IronRuby.Builtins {
         // Ruby constructor:
         public static object CreateAnonymousModule(RubyScope/*!*/ scope, BlockParam body, RubyClass/*!*/ self) {
             RubyModule newModule = new RubyModule(self, null);
-            return (body != null) ? RubyUtils.EvaluateInModule(newModule, body, null, newModule) : newModule;
+            var args = new object[] { newModule };
+            return (body != null) ? RubyUtils.EvaluateInModule(newModule, body, args, newModule) : newModule;
         }
 
         // thread safe:
@@ -1367,7 +1369,7 @@ namespace IronRuby.Builtins {
 
             foreach (var arg in type.GetGenericArguments()) {
                 if (!arg.IsGenericParameter) {
-                    Debug.Assert(arg.DeclaringMethod != null);
+                    Debug.Assert(arg.GetTypeInfo().DeclaringMethod != null);
                     return true;
                 }
             }
@@ -1746,15 +1748,15 @@ namespace IronRuby.Builtins {
         }
 
         /// <summary>
-        /// inherited == false, attributes & attr == Instance:
+        /// inherited == false, (attributes &amp; attr) == Instance:
         ///   - get methods in the "self" module
         ///   - also include methods on singleton ancestor classes until a non-singleton class is reached
-        /// inherited == false, attributes & attr == Singleton:
+        /// inherited == false, (attributes &amp; attr) == Singleton:
         ///   - get methods only in the "self" module if it's a singleton class
         ///   - do not visit mixins nor super classes 
-        /// inherited == true, attributes & attr == Singleton:
+        /// inherited == true, (attributes &amp; attr) == Singleton:
         ///   - walk all ancestors until a non-singleton class is reached (do not include non-singleton's methods)
-        /// inherited == true, attributes & attr == None:
+        /// inherited == true, attributes &amp; attr == None:
         ///   - walk all ancestors until an Object is reached
         /// 
         /// Methods are filtered by visibility specified in attributes (mutliple visibilities could be specified).
@@ -1896,7 +1898,7 @@ namespace IronRuby.Builtins {
         /// Returns true if the CLR type is treated as Ruby module (as opposed to a Ruby class)
         /// </summary>
         public static bool IsModuleType(Type/*!*/ type) {
-            return type.IsInterface || type.IsGenericTypeDefinition;
+            return type.IsInterface() || type.IsGenericTypeDefinition();
         }
 
         // thread-safe:
@@ -2025,7 +2027,7 @@ namespace IronRuby.Builtins {
             List<Type> interfaces = new List<Type>();
             using (Context.ClassHierarchyLocker()) {
                 foreach (RubyModule m in _mixins) {
-                    if (m.IsInterface && !m.TypeTracker.Type.IsGenericTypeDefinition && !interfaces.Contains(m.TypeTracker.Type)) {
+                    if (m.IsInterface && !m.TypeTracker.Type.IsGenericTypeDefinition() && !interfaces.Contains(m.TypeTracker.Type)) {
                         interfaces.Add(m.TypeTracker.Type);
                     }
                 }
@@ -2139,16 +2141,6 @@ namespace IronRuby.Builtins {
 
         #region Debug View
 
-        // see: RubyObject.DebuggerDisplayValue
-        internal string/*!*/ GetDebuggerDisplayValue(object obj) {
-            return Context.Inspect(obj).ConvertToString();
-        }
-
-        // see: RubyObject.DebuggerDisplayType
-        internal string/*!*/ GetDebuggerDisplayType() {
-            return Name;
-        }
-
         internal sealed class DebugView {
             private readonly RubyModule/*!*/ _obj;
 
@@ -2159,9 +2151,9 @@ namespace IronRuby.Builtins {
 
             #region RubyObjectDebugView
 
-            [DebuggerDisplay("{GetModuleName(A),nq}", Name = "{GetClassKind(),nq}", Type = "")]
-            public object A {
-                get { return _obj.ImmediateClass; }
+            [DebuggerDisplay("{A,nq}", Name = "{GetClassKind(),nq}", Type = "")]
+            public string A {
+                get { return GetModuleName(_obj.ImmediateClass); }
             }
 
             [DebuggerDisplay("{B}", Name = "tainted?", Type = "")]
@@ -2205,9 +2197,9 @@ namespace IronRuby.Builtins {
 
             #endregion
 
-            [DebuggerDisplay("{GetModuleName(F),nq}", Name = "super", Type = "")]
-            public object F {
-                get { return _obj.GetSuperClass(); }
+            [DebuggerDisplay("{F,nq}", Name = "super", Type = "")]
+            public string F {
+                get { return GetModuleName(_obj.GetSuperClass()); }
             }
 
             [DebuggerDisplay("", Name = "mixins", Type = "")]

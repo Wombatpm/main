@@ -12,7 +12,7 @@
  *
  *
  * ***************************************************************************/
-#if !CLR2
+#if FEATURE_NUMERICS
 
 using System;
 using System.Collections.Generic;
@@ -20,7 +20,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
-using Microsoft.Contracts;
 using Microsoft.Scripting.Utils;
 using BigInt = System.Numerics.BigInteger;
 
@@ -515,7 +514,11 @@ namespace Microsoft.Scripting.Math {
         }
 
         public string ToString(int @base) {
-            return MathUtils.BigIntegerToString(GetWords(), Sign, @base);
+            return MathUtils.BigIntegerToString(GetWords(), Sign, @base, false);
+        }
+
+        public string ToString(string format) {
+            return Value.ToString(format);
         }
 
         public override int GetHashCode() {
@@ -571,7 +574,7 @@ namespace Microsoft.Scripting.Math {
             return BigInt.Log10(Value);
         }
 
-        #region IComparable Members
+#region IComparable Members
 
         public int CompareTo(object obj) {
             if (obj == null) {
@@ -595,12 +598,11 @@ namespace Microsoft.Scripting.Math {
             return Value.ToByteArray();
         }
 
-        [Confined]
         public string ToString(IFormatProvider provider) {
             return Value.ToString(provider);
         }
 
-        #region IFormattable Members
+#region IFormattable Members
 
         string IFormattable.ToString(string format, IFormatProvider formatProvider) {
             return Value.ToString(format, formatProvider);

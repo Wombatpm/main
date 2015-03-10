@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using Microsoft.Scripting.Ast;
@@ -24,12 +24,14 @@ using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
+using System.Linq;
+
 using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
 
 namespace Microsoft.Scripting {
     public abstract class MutableTuple {
-#if SILVERLIGHT
+#if WP75
         // CF doesn't support more than 64 generic type parameters:
         public static readonly int MaxSize = PlatformAdaptationLayer.IsCompactFramework ? 64 : 128;
 #else
@@ -136,7 +138,12 @@ namespace Microsoft.Scripting {
             ContractUtils.RequiresNotNull(tupleType, "tupleType");
 
             int count = 0;
-            lock(_sizeDict) if (_sizeDict.TryGetValue(tupleType, out count)) return count;
+            lock (_sizeDict) {
+                if (_sizeDict.TryGetValue(tupleType, out count)) {
+                    return count;
+                }
+            }
+
             Stack<Type> types = new Stack<Type>(tupleType.GetGenericArguments());            
 
             while (types.Count != 0) {
@@ -149,12 +156,17 @@ namespace Microsoft.Scripting {
                     continue;
                 }
 
-                if (t == typeof(DynamicNull)) continue;
+                if (t == typeof(DynamicNull)) {
+                    continue;
+                }
 
                 count++;
             }
 
-            lock (_sizeDict) _sizeDict[tupleType] = count;
+            lock (_sizeDict) {
+                _sizeDict[tupleType] = count;
+            }
+
             return count;
         }
 
@@ -198,7 +210,7 @@ namespace Microsoft.Scripting {
             if (index < 0 || index >= size) throw new ArgumentException("index");
 
             foreach (int curIndex in GetAccessPath(size, index)) {
-                PropertyInfo pi = tupleType.GetProperty("Item" + String.Format("{0:D3}", curIndex));
+                PropertyInfo pi = tupleType.GetInheritedProperties("Item" + String.Format("{0:D3}", curIndex)).First();
                 Debug.Assert(pi != null);
                 yield return pi;
                 tupleType = pi.PropertyType;
@@ -261,7 +273,7 @@ namespace Microsoft.Scripting {
                     int newStart = start + (i * multiplier);
                     int newEnd = System.Math.Min(end, start + ((i + 1) * multiplier));
 
-                    PropertyInfo pi = tupleType.GetProperty("Item" + String.Format("{0:D3}", i));
+                    PropertyInfo pi = tupleType.GetInheritedProperties("Item" + String.Format("{0:D3}", i)).First();
                     res.SetValue(i, CreateTupleInstance(pi.PropertyType, newStart, newEnd, args));
                 }
             } else {
@@ -358,7 +370,7 @@ namespace Microsoft.Scripting {
                     int newStart = start + (i * multiplier);
                     int newEnd = System.Math.Min(end, start + ((i + 1) * multiplier));
 
-                    PropertyInfo pi = tupleType.GetProperty("Item" + String.Format("{0:D3}", i));
+                    PropertyInfo pi = tupleType.GetInheritedProperties("Item" + String.Format("{0:D3}", i)).First();
 
                     newValues[i] = CreateNew(pi.PropertyType, newStart, newEnd, values);
                 }
@@ -377,7 +389,9 @@ namespace Microsoft.Scripting {
                 }
             }
             
-            return Expression.New(tupleType.GetConstructor(ArrayUtils.ConvertAll(newValues, x => x.Type)), newValues);
+            return Expression.New(
+                tupleType.GetConstructor(ArrayUtils.ConvertAll(newValues, x => x.Type)), 
+                newValues);
         }
     }
 

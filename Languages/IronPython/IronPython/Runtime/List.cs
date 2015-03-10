@@ -30,10 +30,10 @@ using IronPython.Runtime.Exceptions;
 using IronPython.Runtime.Operations;
 using IronPython.Runtime.Types;
 
-#if CLR2
-using Microsoft.Scripting.Math;
-#else
+#if FEATURE_NUMERICS
 using System.Numerics;
+#else
+using Microsoft.Scripting.Math;
 #endif
 
 using SpecialNameAttribute = System.Runtime.CompilerServices.SpecialNameAttribute;
@@ -45,6 +45,9 @@ namespace IronPython.Runtime {
     public class List : IList, ICodeFormattable, IList<object>, IReversible, IStructuralEquatable, IStructuralComparable
 #if CLR2
         , IValueEquality
+#endif
+#if FEATURE_READONLY_COLLECTION_INTERFACE
+        , IReadOnlyList<object>
 #endif
     {
         private const int INITIAL_SIZE = 20;
@@ -1631,8 +1634,8 @@ namespace IronPython.Runtime {
                 return;
             }
 
-            int hc1 = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(_one);
-            int hc2 = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(_two);
+            int hc1 = ReferenceEqualityComparer<object>.Instance.GetHashCode(_one);
+            int hc2 = ReferenceEqualityComparer<object>.Instance.GetHashCode(_two);
 
             if (hc1 < hc2) {
                 MonitorUtils.Enter(_one, ref _oneLocked);

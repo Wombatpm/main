@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using Microsoft.Scripting.Ast;
@@ -200,7 +200,7 @@ namespace IronPython.Compiler {
         public Expression/*!*/ Delete() {
             return Expression.Assign(
                 Expression.Field(_closureCell, _cellField),
-                Expression.Field(null, typeof(Uninitialized).GetField("Instance"))
+                Expression.Field(null, typeof(Uninitialized).GetDeclaredField("Instance"))
             );
         }
 

@@ -42,11 +42,7 @@ namespace IronPython.Runtime {
     /// occurred either before or after the mutation.
     /// </summary>
     [Serializable]
-    internal sealed class SetStorage : IEnumerable, IEnumerable<object>
-#if !SILVERLIGHT
-        , ISerializable, IDeserializationCallback
-#endif
-    {
+    internal sealed class SetStorage : IEnumerable, IEnumerable<object>, ISerializable, IDeserializationCallback {
         internal Bucket[] _buckets;
         internal int _count;
         private int _version;
@@ -83,7 +79,7 @@ namespace IronPython.Runtime {
             Initialize(count);
         }
 
-#if !SILVERLIGHT
+#if FEATURE_SERIALIZATION
         private SetStorage(SerializationInfo info, StreamingContext context) {
             // remember the serialization info; we'll deserialize when we get the callback. This
             // enables special types like DBNull.Value to successfully be deserialized inside the
@@ -248,10 +244,12 @@ namespace IronPython.Runtime {
             }
 
             Bucket[] buckets = _buckets;
+            res._hashFunc = _hashFunc;
+            res._eqFunc = _eqFunc;
+            res._itemType = _itemType;
             if (_count < _buckets.Length * MinLoad) {
                 // If the set is sparsely populated, create a cleaner copy
                 res.Initialize(_count);
-                res.UpdateHelperFunctions(this);
 
                 for (int i = 0; i < buckets.Length; i++) {
                     Bucket bucket = buckets[i];
@@ -263,9 +261,6 @@ namespace IronPython.Runtime {
                 // Otherwise, perform a faster copy
                 res._maxCount = (int)(buckets.Length * Load);
                 res._buckets = new Bucket[buckets.Length];
-                res._hashFunc = _hashFunc;
-                res._eqFunc = _eqFunc;
-                res._itemType = _itemType;
 
                 for (int i = 0; i < buckets.Length; i++) {
                     Bucket bucket = buckets[i];
@@ -1057,6 +1052,7 @@ namespace IronPython.Runtime {
             if (_itemType == null) {
                 _hashFunc = other._hashFunc;
                 _eqFunc = other._eqFunc;
+                _itemType = other._itemType;
                 return;
             }
 
@@ -1383,7 +1379,7 @@ namespace IronPython.Runtime {
 
         #endregion
 
-#if !SILVERLIGHT
+#if FEATURE_SERIALIZATION
         #region ISerializable Members
 
         public void GetObjectData(SerializationInfo info, StreamingContext context) {

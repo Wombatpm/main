@@ -29,10 +29,10 @@ using Microsoft.Scripting.Utils;
 using SpecialName = System.Runtime.CompilerServices.SpecialNameAttribute;
 using System.Reflection;
 
-#if CLR2
-using Microsoft.Scripting.Math;
-#else
+#if FEATURE_NUMERICS
 using System.Numerics;
+#else
+using Microsoft.Scripting.Math;
 #endif
 
 [assembly: PythonModule("array", typeof(IronPython.Modules.ArrayModule))]
@@ -272,7 +272,9 @@ namespace IronPython.Modules {
             }
 
             public void fromstring([NotNull]PythonBuffer buf) {
-                fromstring(buf.ToString());
+                if ((buf.Size % itemsize) != 0) throw PythonOps.ValueError("string length not a multiple of itemsize");
+
+                FromStream(new MemoryStream(buf.byteCache, false));
             }
 
             public void fromunicode(CodeContext/*!*/ context, string s) {

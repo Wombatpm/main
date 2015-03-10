@@ -12,16 +12,19 @@
  *
  *
  * ***************************************************************************/
+#if FEATURE_XMLDOC
+using System.Xml;
+using System.Xml.XPath;
+#endif
 
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
-using System.Xml;
-using System.Xml.XPath;
 using Microsoft.Scripting;
 using Microsoft.Scripting.Hosting;
 using Microsoft.Scripting.Runtime;
@@ -63,12 +66,12 @@ namespace IronPython.Runtime.Types {
             return null;
         }
 
-        private static string DocOneInfoForProperty(Type declaringType, string propertyName, MethodInfo getter, MethodInfo setter, object[] attrs) {
-            if (attrs == null || attrs.Length == 0) {
+        private static string DocOneInfoForProperty(Type declaringType, string propertyName, MethodInfo getter, MethodInfo setter, IEnumerable<DocumentationAttribute> attrs) {
+            if (!attrs.Any()) {
                 StringBuilder autoDoc = new StringBuilder();
 
                 string summary = null;
-#if !SILVERLIGHT // XML doc
+#if FEATURE_XMLDOC
                 string returns = null;
                 GetXmlDocForProperty(declaringType, propertyName, out summary, out returns);
 #endif
@@ -92,24 +95,24 @@ namespace IronPython.Runtime.Types {
             }
 
             StringBuilder docStr = new StringBuilder();
-            for (int i = 0; i < attrs.Length; i++) {
-                docStr.Append(((DocumentationAttribute)attrs[i]).Documentation);
+            foreach (var attr in attrs) {
+                docStr.Append(attr.Documentation);
                 docStr.Append(Environment.NewLine);
             }
             return docStr.ToString();
         }
 
         public static string DocOneInfo(ExtensionPropertyInfo info) {
-            return DocOneInfoForProperty(info.DeclaringType, info.Name, info.Getter, info.Setter, null);
+            return DocOneInfoForProperty(info.DeclaringType, info.Name, info.Getter, info.Setter, Enumerable.Empty<DocumentationAttribute>());
         }
 
         public static string DocOneInfo(PropertyInfo info) {
-            object[] attrs = info.GetCustomAttributes(typeof(DocumentationAttribute), false);
+            var attrs = info.GetCustomAttributes<DocumentationAttribute>();
             return DocOneInfoForProperty(info.DeclaringType, info.Name, info.GetGetMethod(), info.GetSetMethod(), attrs);
         }
 
         public static string DocOneInfo(FieldInfo info) {
-            object[] attrs = info.GetCustomAttributes(typeof(DocumentationAttribute), false);
+            var attrs = info.GetCustomAttributes<DocumentationAttribute>();
             return DocOneInfoForProperty(info.DeclaringType, info.Name, null, null, attrs);
         }
 
@@ -119,11 +122,9 @@ namespace IronPython.Runtime.Types {
 
         public static string DocOneInfo(MethodBase info, string name, bool includeSelf) {
             // Look for methods tagged with [Documentation("doc string for foo")]
-            object[] attrs = info.GetCustomAttributes(typeof(DocumentationAttribute), false);
-            if (attrs.Length > 0) {
-                Debug.Assert(attrs.Length == 1);
-                DocumentationAttribute doc = attrs[0] as DocumentationAttribute;
-                return doc.Documentation;
+            var attr = info.GetCustomAttributes<DocumentationAttribute>().SingleOrDefault();
+            if (attr != null) {
+                return attr.Documentation;
             }
 
             string defaultDoc = GetDefaultDocumentation(name);
@@ -140,7 +141,7 @@ namespace IronPython.Runtime.Types {
 
         public static string CreateAutoDoc(EventInfo info) {
             string summary = null;
-#if !SILVERLIGHT // XML doc      
+#if FEATURE_XMLDOC
             string returns;
             GetXmlDoc(info, out summary, out returns);
 #endif
@@ -150,26 +151,26 @@ namespace IronPython.Runtime.Types {
         public static string CreateAutoDoc(Type t) {
             string summary = null;
 
-#if !SILVERLIGHT // XML doc
+#if FEATURE_XMLDOC
             GetXmlDoc(t, out summary);
 #endif
             if (t.IsEnum) {
 
-#if SILVERLIGHT // GetNames/GetValues
+#if FEATURE_ENUM_NAMES_VALUES // GetNames/GetValues
+                                string[] names = Enum.GetNames(t);
+                Array values = Enum.GetValues(t);
+                for (int i = 0; i < names.Length; i++) {
+                    names[i] = String.Concat(names[i],
+                        " (",
+                        Convert.ChangeType(values.GetValue(i), Enum.GetUnderlyingType(t), null).ToString(),
+                        ")");
+                }
+#else
                 FieldInfo[] fields = t.GetFields(BindingFlags.Static | BindingFlags.Public);
                 string[] names = new string[fields.Length];
                 for (int i = 0; i < fields.Length; i++) {
                     object value = Convert.ChangeType(fields[i].GetValue(null), Enum.GetUnderlyingType(t), Thread.CurrentThread.CurrentCulture);
                     names[i] = String.Concat(fields[i].Name, " (", value.ToString(), ")");
-                }
-#else
-                string[] names = Enum.GetNames(t);
-                Array values = Enum.GetValues(t);
-                for (int i = 0; i < names.Length; i++) {
-                    names[i] = String.Concat(names[i],
-                        " (",
-                        Convert.ChangeType(values.GetValue(i), Enum.GetUnderlyingType(t)).ToString(),
-                        ")");
                 }
 #endif
 
@@ -199,7 +200,7 @@ namespace IronPython.Runtime.Types {
             string summary = null, returns = null;
             List<KeyValuePair<string, string>> parameters = null;
 
-#if !SILVERLIGHT // XML doc
+#if FEATURE_XMLDOC
             GetXmlDoc(info, out summary, out returns, out parameters);
 #endif
 
@@ -325,7 +326,7 @@ namespace IronPython.Runtime.Types {
                 paramDoc.Add(
                     new ParameterDoc(
                         pi.Name ?? "",  // manufactured methods, such as string[].ctor(int) can have no parameter names.
-                        GetPythonTypeName(pi.ParameterType),
+                        pi.ParameterType.IsGenericParameter ? pi.ParameterType.Name : GetPythonTypeName(pi.ParameterType),
                         paramDocString,
                         flags
                     )
@@ -351,7 +352,7 @@ namespace IronPython.Runtime.Types {
         }
 
         internal static string CreateAutoDoc(MethodBase info, string name, int endParamSkip, bool includeSelf) {
-#if !SILVERLIGHT // Console
+#if FEATURE_FULL_CONSOLE
             int lineWidth;
             try {
                 lineWidth = Console.WindowWidth - 30;
@@ -425,7 +426,7 @@ namespace IronPython.Runtime.Types {
             return DynamicHelpers.GetPythonTypeFromType(type).Name;
         }
 
-#if !SILVERLIGHT // XML doc
+#if FEATURE_XMLDOC
 
         private static readonly object _CachedDocLockObject = new object();
         private static readonly List<Assembly> _AssembliesWithoutXmlDoc = new List<Assembly>();
@@ -570,9 +571,10 @@ namespace IronPython.Runtime.Types {
                     if (!System.IO.File.Exists(xml)) {
 #if !CLR2
                         // On .NET 4.0 documentation is in the reference assembly location
+                        // for 64-bit processes, we need to look in Program Files (x86)
                         xml = Path.Combine(
                             Path.Combine(
-                                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), 
+                                Environment.GetFolderPath(Environment.Is64BitProcess ? Environment.SpecialFolder.ProgramFilesX86 : Environment.SpecialFolder.ProgramFiles), 
                                 _frameworkReferencePath
                             ),
                             baseFile

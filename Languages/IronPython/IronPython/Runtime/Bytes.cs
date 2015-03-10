@@ -13,11 +13,15 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
-using System.Numerics;
 #else
 using Microsoft.Scripting.Ast;
+#endif
+
+#if FEATURE_NUMERICS
+using System.Numerics;
+#else
 using Microsoft.Scripting.Math;
 #endif
 
@@ -783,6 +787,34 @@ namespace IronPython.Runtime {
 
                 return new Bytes(res.ToArray());
             }
+        }
+
+        /// <summary>
+        /// Returns a copy of the internal byte array.
+        /// </summary>
+        /// <returns>
+        /// System.Byte[]
+        /// </returns>
+        [PythonHidden]
+        public byte[] ToByteArray() {
+            byte[] res = null;
+            if(_bytes != null) {
+                res = new byte[_bytes.Length];
+                _bytes.CopyTo(res, 0);
+            }
+            return res;
+        }
+
+        /// <summary>
+        /// This method returns the underlying byte array directly.
+        /// It should be used sparingly!
+        /// </summary>
+        /// <returns>
+        /// System.Byte[]
+        /// </returns>
+        [PythonHidden]
+        public byte[] GetUnsafeByteArray() {
+            return _bytes;
         }
 
         #endregion

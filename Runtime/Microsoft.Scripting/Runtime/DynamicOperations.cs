@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using Microsoft.Scripting.Ast;
@@ -26,7 +26,6 @@ using System.Dynamic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-using Microsoft.Contracts;
 using Microsoft.Scripting.Utils;
 
 namespace Microsoft.Scripting.Runtime {
@@ -40,7 +39,7 @@ namespace Microsoft.Scripting.Runtime {
     /// of the operations.  There is a default instance of ObjectOperations you can share across all uses of the 
     /// engine.  However, very advanced hosts can create new instances.
     /// </summary>
-    public sealed class DynamicOperations {
+    public sealed partial class DynamicOperations {
         private readonly LanguageContext _lc;
 
         /// <summary> a dictionary of SiteKey's which are used to cache frequently used operations, logically a set </summary>
@@ -241,14 +240,14 @@ namespace Microsoft.Scripting.Runtime {
         /// depending on what the langauge prefers.
         /// </summary>
         public object ConvertTo(object obj, Type type) {
-            if (type.IsInterface || type.IsClass) {
+            if (type.GetTypeInfo().IsInterface || type.GetTypeInfo().IsClass) {
                 CallSite<Func<CallSite, object, object>> site;
                 site = GetOrCreateSite<object, object>(_lc.CreateConvertBinder(type, null));
                 return site.Target(site, obj);
             }
 
             // TODO: We should probably cache these instead of using reflection all the time.
-            foreach (MethodInfo mi in typeof(DynamicOperations).GetMember("ConvertTo")) {
+            foreach (MethodInfo mi in typeof(DynamicOperations).GetTypeInfo().GetDeclaredMethods("ConvertTo")) {
                 if (mi.IsGenericMethod) {
                     try {
                         return mi.MakeGenericMethod(type).Invoke(this, new object[] { obj });
@@ -609,19 +608,16 @@ namespace Microsoft.Scripting.Runtime {
                 _siteType = siteType;
             }
 
-            [Confined]
             public override bool Equals(object obj) {
                 return Equals(obj as SiteKey);
             }
 
-            [Confined]
             public override int GetHashCode() {
                 return SiteBinder.GetHashCode() ^ _siteType.GetHashCode();
             }
 
             #region IEquatable<SiteKey> Members
 
-            [StateIndependent]
             public bool Equals(SiteKey other) {
                 if (other == null) return false;
 
@@ -631,53 +627,12 @@ namespace Microsoft.Scripting.Runtime {
 
             #endregion
 #if DEBUG
-            [Confined]
             public override string ToString() {
                 return String.Format("{0} {1}", SiteBinder.ToString(), HitCount);
             }
 #endif
         }
 
-        private Func<DynamicOperations, CallSiteBinder, object, object[], object> GetInvoker(int paramCount) {
-            Func<DynamicOperations, CallSiteBinder, object, object[], object> invoker;
-            lock (_invokers) {
-                if (!_invokers.TryGetValue(paramCount, out invoker)) {
-                    ParameterExpression dynOps = Expression.Parameter(typeof(DynamicOperations));
-                    ParameterExpression callInfo = Expression.Parameter(typeof(CallSiteBinder));
-                    ParameterExpression target = Expression.Parameter(typeof(object));
-                    ParameterExpression args = Expression.Parameter(typeof(object[]));
-                    Type funcType = DelegateUtils.GetObjectCallSiteDelegateType(paramCount);
-                    ParameterExpression site = Expression.Parameter(typeof(CallSite<>).MakeGenericType(funcType));
-                    Expression[] siteArgs = new Expression[paramCount + 2];
-                    siteArgs[0] = site;
-                    siteArgs[1] = target;
-                    for (int i = 0; i < paramCount; i++) {
-                        siteArgs[i + 2] = Expression.ArrayIndex(args, Expression.Constant(i));
-                    }
-
-                    var getOrCreateSiteFunc = new Func<CallSiteBinder, CallSite<Func<object>>>(GetOrCreateSite<Func<object>>).Method.GetGenericMethodDefinition();
-                    _invokers[paramCount] = invoker = Expression.Lambda<Func<DynamicOperations, CallSiteBinder, object, object[], object>>(
-                        Expression.Block(
-                            new[] { site },
-                            Expression.Assign(
-                                site,
-                                Expression.Call(dynOps, getOrCreateSiteFunc.MakeGenericMethod(funcType), callInfo)
-                            ),
-                            Expression.Invoke(
-                                Expression.Field(
-                                    site,
-                                    site.Type.GetField("Target")
-                                ),
-                                siteArgs
-                            )
-                        ),
-                        new[] { dynOps, callInfo, target, args }
-                    ).Compile();
-                }
-            }
-            return invoker;
-        }
-       
         #endregion
     }
 }

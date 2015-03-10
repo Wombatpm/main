@@ -45,14 +45,12 @@ class CommonTest(seq_tests.CommonTest):
         self.assertEqual(str(a2), "[0, 1, 2, [...], 3]")
         self.assertEqual(repr(a2), "[0, 1, 2, [...], 3]")
 
-        # IronPython recursion limit is way higher and results in an overflow. If
-        # sys.setrecursionlimit is used to lower it, RuntimeError is still not raised below.
-        if test_support.due_to_ironpython_incompatibility("http://www.codeplex.com/IronPython/WorkItem/View.aspx?WorkItemId=21116"):
-            return
-        l0 = []
-        for i in xrange(sys.getrecursionlimit() + 100):
-            l0 = [l0]
-        self.assertRaises(RuntimeError, repr, l0)
+        if sys.platform != 'cli':
+            # IronPython does not implement a recursion limit
+            l0 = []
+            for i in xrange(sys.getrecursionlimit() + 100):
+                l0 = [l0]
+            self.assertRaises(RuntimeError, repr, l0)
 
     def test_print(self):
         d = self.type2test(xrange(200))
@@ -334,7 +332,7 @@ class CommonTest(seq_tests.CommonTest):
         self.assertRaises(BadExc, d.remove, 'c')
         for x, y in zip(d, e):
             # verify that original order and values are retained.
-            self.assert_(x is y)
+            self.assertIs(x, y)
 
     def test_count(self):
         a = self.type2test([0, 1, 2])*3
@@ -470,7 +468,7 @@ class CommonTest(seq_tests.CommonTest):
         u = self.type2test([0, 1])
         u2 = u
         u += [2, 3]
-        self.assert_(u is u2)
+        self.assertIs(u, u2)
 
         u = self.type2test("spam")
         u += "eggs"

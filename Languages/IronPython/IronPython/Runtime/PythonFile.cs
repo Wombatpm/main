@@ -20,19 +20,21 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-
+using System.Threading;
 using Microsoft.Scripting;
 using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
+using Microsoft.Win32.SafeHandles;
 
 using IronPython.Runtime.Exceptions;
 using IronPython.Runtime.Operations;
 using IronPython.Runtime.Types;
 
-#if CLR2
-using Microsoft.Scripting.Math;
-#else
+#if FEATURE_NUMERICS
 using System.Numerics;
+
+#else
+using Microsoft.Scripting.Math;
 #endif
 
 namespace IronPython.Runtime {
@@ -636,7 +638,7 @@ namespace IronPython.Runtime {
         // possibly translated character read.
         private int ReadChar() {
             int c = ReadOne();
-            if (c != -1) _position++;            
+            if (c != -1) _position++;
             if (c == '\r') {
                 Debug.Assert(_lastChar == -1);
                 // we can't Peek here because Peek() won't block for more input
@@ -948,7 +950,7 @@ namespace IronPython.Runtime {
 
         private PythonStreamReader _reader;
         private PythonStreamWriter _writer;
-        private bool _isOpen;
+        protected bool _isOpen;
         private Nullable<long> _reseekPosition; // always null for console
         private WeakRefTracker _weakref;
         private string _enumValue;
@@ -1381,7 +1383,8 @@ namespace IronPython.Runtime {
             }
         }
 
-        void ThrowIfClosed() {
+        [PythonHidden]
+        protected void ThrowIfClosed() {
             if (!_isOpen) {
                 throw PythonOps.ValueError("I/O operation on closed file");
             }
@@ -1573,7 +1576,7 @@ namespace IronPython.Runtime {
             }
         }
 
-        public virtual void write(string s) {
+        public void write(string s) {
             if (s == null) {
                 throw PythonOps.TypeError("must be string or read-only character buffer, not None");
             }
@@ -1583,7 +1586,7 @@ namespace IronPython.Runtime {
             }
         }
 
-        public virtual void write([NotNull]IList<byte> bytes) {
+        public void write([NotNull]IList<byte> bytes) {
             lock (this) {
                 WriteNoLock(bytes);
             }
@@ -1614,35 +1617,7 @@ namespace IronPython.Runtime {
         }
 
         public void write([NotNull]PythonBuffer buf) {
-            WriteWorker(buf, true);
-        }
-
-        private void WriteWorker(PythonBuffer/*!*/ buf, bool locking) {
-            Debug.Assert(buf != null);
-
-            string str = buf._object as string;
-            IPythonArray pyArr;
-            if (str != null || buf._object is IList<byte>) {
-                if (locking) {
-                    write(buf.ToString());
-                } else {
-                    WriteNoLock(buf.ToString());
-                }
-            } else if (buf._object is Array) {
-                throw new NotImplementedException("writing buffer of .NET array to file");
-            } else if ((pyArr = buf._object as IPythonArray) != null) {
-                if (_fileMode != PythonFileMode.Binary) {
-                    throw PythonOps.TypeError("char buffer type not available");
-                }
-
-                if (locking) {
-                    write(pyArr.tostring());
-                } else {
-                    WriteNoLock(pyArr.tostring());
-                }
-            } else {
-                Debug.Assert(false, "unsupported buffer object");
-            }
+            write((IList<byte>)buf);
         }
 
         public void write([NotNull]object arr) {
@@ -1685,7 +1660,7 @@ namespace IronPython.Runtime {
 
                         PythonBuffer buf = e.Current as PythonBuffer;
                         if (buf != null) {
-                            WriteWorker(buf, false);
+                            WriteNoLock(buf);
                             continue;
                         }
 
@@ -1777,12 +1752,9 @@ namespace IronPython.Runtime {
                         TextWriter currentWriter = _io.GetWriter(_consoleStreamType);
 
                         if (!ReferenceEquals(currentWriter, _writer.TextWriter)) {
-                            try
-                            {
+                            try {
                                 _writer.Flush();
-                            }
-                            catch (ObjectDisposedException)
-                            {
+                            } catch (ObjectDisposedException) {
                                 //no way to tell if stream has been closed outside of execution
                                 //so don't blow up if it has
                             }
@@ -1812,9 +1784,25 @@ namespace IronPython.Runtime {
             return this;
         }
 
+#if FEATURE_NATIVE
+        public bool isatty() {
+            return IsConsole && !isRedirected();
+        }
+
+        private bool isRedirected() {
+            if (_consoleStreamType == ConsoleStreamType.Output) {
+                return StreamRedirectionInfo.IsOutputRedirected;
+            }
+            if (_consoleStreamType == ConsoleStreamType.Input) {
+                return StreamRedirectionInfo.IsInputRedirected;
+            }
+            return StreamRedirectionInfo.IsErrorRedirected;
+        }
+#else
         public bool isatty() {
             return IsConsole;
         }
+#endif
 
         public object __enter__() {
             ThrowIfClosed();
@@ -1884,4 +1872,106 @@ namespace IronPython.Runtime {
 
         #endregion
     }
+
+#if FEATURE_NATIVE
+    // dotnet45 backport
+    // http://msdn.microsoft.com/en-us/library/system.console.isoutputredirected%28v=VS.110%29.aspx
+
+    internal static class StreamRedirectionInfo {
+
+        private enum FileType { Unknown, Disk, Char, Pipe };
+        private enum StdHandle { Stdin = -10, Stdout = -11, Stderr = -12 };
+        [DllImport("kernel32.dll")]
+        private static extern FileType GetFileType(SafeFileHandle hdl);
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr GetStdHandle(StdHandle std);
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool GetConsoleMode(IntPtr hConsoleHandle, out int mode);
+
+        private static bool IsHandleRedirected(IntPtr ioHandle) {
+            SafeFileHandle safeIOHandle = new SafeFileHandle(ioHandle, false);
+            // console, printer, com port are Char
+            var fileType = GetFileType(safeIOHandle);
+            if (fileType != FileType.Char) {
+                return true;
+            }
+            // narrow down to console only
+            int mode;
+            bool success = GetConsoleMode(ioHandle, out mode);
+            return !success;
+        }
+
+        private static Object s_InternalSyncObject;
+
+        private static Object InternalSyncObject {
+            get {
+                if (s_InternalSyncObject == null) {
+                    Object o = new Object();
+                    Interlocked.CompareExchange<Object>(ref s_InternalSyncObject, o, null);
+                }
+                return s_InternalSyncObject;
+            }
+        }
+
+        private static bool _stdInRedirectQueried = false;
+
+        private static bool _isStdInRedirected = false;
+
+        internal static bool IsInputRedirected {
+            get {
+                if (_stdInRedirectQueried) {
+                    return _isStdInRedirected;
+                }
+                lock (InternalSyncObject) {
+                    if (_stdInRedirectQueried) {
+                        return _isStdInRedirected;
+                    }
+                    _isStdInRedirected = IsHandleRedirected(GetStdHandle(StdHandle.Stdin));
+                    _stdInRedirectQueried = true;
+                    return _isStdInRedirected;
+                }
+            }
+        }
+
+        private static bool _stdOutRedirectQueried = false;
+
+        private static bool _isStdOutRedirected = false;
+
+        internal static bool IsOutputRedirected {
+            get {
+                if (_stdOutRedirectQueried) {
+                    return _isStdOutRedirected;
+                }
+                lock (InternalSyncObject) {
+                    if (_stdOutRedirectQueried) {
+                        return _isStdOutRedirected;
+                    }
+                    _isStdOutRedirected = IsHandleRedirected(GetStdHandle(StdHandle.Stdout));
+                    _stdOutRedirectQueried = true;
+                    return _isStdOutRedirected;
+                }
+            }
+        }
+
+        private static bool _stdErrRedirectQueried = false;
+
+        private static bool _isStdErrRedirected = false;
+
+        internal static bool IsErrorRedirected {
+            get {
+                if (_stdErrRedirectQueried) {
+                    return _isStdErrRedirected;
+                }
+                lock (InternalSyncObject) {
+                    if (_stdErrRedirectQueried) {
+                        return _isStdErrRedirected;
+                    }
+                    _isStdErrRedirected = IsHandleRedirected(GetStdHandle(StdHandle.Stderr));
+                    _stdErrRedirectQueried = true;
+                    return _isStdErrRedirected;
+                }
+            }
+        }
+    }
+#endif
 }

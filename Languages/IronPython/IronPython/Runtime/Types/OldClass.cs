@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using Microsoft.Scripting.Ast;
@@ -57,13 +57,14 @@ namespace IronPython.Runtime.Types {
     [Serializable]
     [DebuggerTypeProxy(typeof(OldClass.OldClassDebugView)), DebuggerDisplay("old-style class {Name}")]
     public sealed class OldClass :
-#if !SILVERLIGHT // ICustomTypeDescriptor
- ICustomTypeDescriptor,
+#if FEATURE_CUSTOM_TYPE_DESCRIPTOR
+        ICustomTypeDescriptor,
 #endif
- ICodeFormattable,
+        ICodeFormattable,
         IMembersList,
         IDynamicMetaObjectProvider, 
-        IPythonMembersList {
+        IPythonMembersList,
+        IWeakReferenceable {
 
         [NonSerialized]
         private List<OldClass> _bases;
@@ -75,6 +76,7 @@ namespace IronPython.Runtime.Types {
 
         private int _optimizedInstanceNamesVersion;
         private string[] _optimizedInstanceNames;
+        private WeakRefTracker _tracker;
 
         public static string __doc__ = "classobj(name, bases, dict)";
 
@@ -148,7 +150,7 @@ namespace IronPython.Runtime.Types {
             }
         }
 
-#if !SILVERLIGHT // SerializationInfo
+#if FEATURE_SERIALIZATION
         private OldClass(SerializationInfo info, StreamingContext context) {
             _bases = (List<OldClass>)info.GetValue("__class__", typeof(List<OldClass>));
             _name = info.GetValue("__name__", typeof(object));
@@ -462,7 +464,7 @@ namespace IronPython.Runtime.Types {
         }
 
         #region ICustomTypeDescriptor Members
-#if !SILVERLIGHT // ICustomTypeDescriptor
+#if FEATURE_CUSTOM_TYPE_DESCRIPTOR
 
         AttributeCollection ICustomTypeDescriptor.GetAttributes() {
             return CustomTypeDescHelpers.GetAttributes(this);
@@ -629,5 +631,22 @@ namespace IronPython.Runtime.Types {
                 }
             }
         }
+
+        #region IWeakReferenceable Members
+
+        WeakRefTracker IWeakReferenceable.GetWeakRef() {
+            return _tracker;
+        }
+
+        bool IWeakReferenceable.SetWeakRef(WeakRefTracker value) {
+            _tracker = value;
+            return true;
+        }
+
+        void IWeakReferenceable.SetFinalizer(WeakRefTracker value) {
+            _tracker = value;
+        }
+
+        #endregion
     }
 }

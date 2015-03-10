@@ -19,16 +19,16 @@ using System.Reflection;
 using System.Threading;
 
 using Microsoft.Scripting;
-using Microsoft.Scripting.Math;
 using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
 
 using IronPython.Runtime.Types;
 
-#if CLR2
-using Complex = Microsoft.Scripting.Math.Complex64;
-#else
+#if FEATURE_NUMERICS
 using System.Numerics;
+#else
+using Microsoft.Scripting.Math;
+using Complex = Microsoft.Scripting.Math.Complex64;
 #endif
 
 namespace IronPython.Runtime.Operations {
@@ -219,9 +219,9 @@ namespace IronPython.Runtime.Operations {
             FieldInfo[] fields = t.GetFields(System.Reflection.BindingFlags.FlattenHierarchy | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
             int res = 0;
             foreach (FieldInfo fi in fields) {
-                if (fi.FieldType.IsClass || fi.FieldType.IsInterface) {
+                if (fi.FieldType.IsClass() || fi.FieldType.IsInterface()) {
                     res += AdjustPointerSize(4);
-                } else if (fi.FieldType.IsPrimitive) {
+                } else if (fi.FieldType.IsPrimitive()) {
                     return System.Runtime.InteropServices.Marshal.SizeOf(fi.FieldType);
                 } else {
                     res += GetTypeSize(fi.FieldType);
@@ -253,6 +253,8 @@ namespace IronPython.Runtime.Operations {
                 throw PythonOps.ValueError("Sign not allowed in string format specifier");
             } else if (spec.Alignment == '=') {
                 throw PythonOps.ValueError("'=' alignment not allowed in string format specifier");
+            } else if (spec.ThousandsComma) {
+                throw PythonOps.ValueError("Cannot specify ',' with 's'.");
             }
 
             // apply precision to shorten the string first

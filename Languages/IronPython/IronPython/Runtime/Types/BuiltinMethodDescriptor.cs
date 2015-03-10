@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using Microsoft.Scripting.Ast;
@@ -141,6 +141,17 @@ namespace IronPython.Runtime.Types {
             get {
                 return DynamicHelpers.GetPythonTypeFromType(_template.DeclaringType);
             }
+        }
+
+        public bool __eq__(object other) {
+            BuiltinMethodDescriptor bmd = other as BuiltinMethodDescriptor;
+            if (bmd == null) {
+                return false;
+            }
+            if (PythonOps.Id(__objclass__) != PythonOps.Id(bmd.__objclass__)) {
+                return false;
+            }
+            return __name__ == bmd.__name__;
         }
 
         public int __cmp__(object other) {

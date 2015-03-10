@@ -54,7 +54,7 @@ namespace IronPython.Hosting {
             return new ScriptRuntime(CreateRuntimeSetup(options));
         }
 
-#if !SILVERLIGHT
+#if FEATURE_REMOTING
         /// <summary>
         /// Creates a new ScriptRuntime with the IronPython scripting engine pre-configured
         /// in the specified AppDomain.  The remote ScriptRuntime may  be manipulated from 
@@ -81,7 +81,7 @@ namespace IronPython.Hosting {
 
         /// <summary>
         /// Creates a new ScriptRuntime and returns the ScriptEngine for IronPython. If
-        /// the ScriptRuntime is requierd it can be acquired from the Runtime property
+        /// the ScriptRuntime is required it can be acquired from the Runtime property
         /// on the engine.
         /// </summary>
         public static ScriptEngine/*!*/ CreateEngine() {
@@ -90,18 +90,18 @@ namespace IronPython.Hosting {
 
         /// <summary>
         /// Creates a new ScriptRuntime with the specified options and returns the 
-        /// ScriptEngine for IronPython. If the ScriptRuntime is requierd it can be 
+        /// ScriptEngine for IronPython. If the ScriptRuntime is required it can be 
         /// acquired from the Runtime property on the engine.
         /// </summary>
         public static ScriptEngine/*!*/ CreateEngine(IDictionary<string, object> options) {
             return GetEngine(CreateRuntime(options));
         }
 
-#if !SILVERLIGHT
+#if FEATURE_REMOTING
 
         /// <summary>
         /// Creates a new ScriptRuntime and returns the ScriptEngine for IronPython. If
-        /// the ScriptRuntime is requierd it can be acquired from the Runtime property
+        /// the ScriptRuntime is required it can be acquired from the Runtime property
         /// on the engine.
         /// 
         /// The remote ScriptRuntime may be manipulated from the local domain but 
@@ -113,7 +113,7 @@ namespace IronPython.Hosting {
 
         /// <summary>
         /// Creates a new ScriptRuntime with the specified options and returns the 
-        /// ScriptEngine for IronPython. If the ScriptRuntime is requierd it can be 
+        /// ScriptEngine for IronPython. If the ScriptRuntime is required it can be 
         /// acquired from the Runtime property on the engine.
         /// 
         /// The remote ScriptRuntime may be manipulated from the local domain but 
@@ -206,6 +206,19 @@ namespace IronPython.Hosting {
             ContractUtils.RequiresNotNull(moduleName, "moduleName");
 
             return GetPythonService(engine).ImportModule(engine, moduleName);
+        }
+
+        /// <summary>
+        /// Imports the Python module by the given name and inserts it into the ScriptScope as that name. If the
+        /// module does not exist an exception is raised.
+        /// </summary>
+        /// <param name="scope"></param>
+        /// <param name="moduleName"></param>
+        public static void ImportModule (this ScriptScope/*!*/ scope, string/*!*/ moduleName) {
+            ContractUtils.RequiresNotNull (scope, "scope");
+            ContractUtils.RequiresNotNull (moduleName, "moduleName");
+
+            scope.SetVariable (moduleName, scope.Engine.ImportModule (moduleName));
         }
 
         /// <summary>

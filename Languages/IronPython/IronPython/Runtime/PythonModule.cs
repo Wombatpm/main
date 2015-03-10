@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #endif
 
@@ -83,7 +83,7 @@ namespace IronPython.Runtime {
         }
 
         [StaticExtensionMethod]
-        public static PythonModule/*!*/ __new__(CodeContext/*!*/ context, PythonType/*!*/ cls, [ParamDictionary]PythonDictionary kwDict\u00F8, params object[]/*!*/ args\u00F8) {
+        public static PythonModule/*!*/ __new__(CodeContext/*!*/ context, PythonType/*!*/ cls, [ParamDictionary]IDictionary<object, object> kwDict0, params object[]/*!*/ args\u00F8) {
             return __new__(context, cls, args\u00F8);
         }
 
@@ -91,9 +91,9 @@ namespace IronPython.Runtime {
             __init__(name, null);
         }
 
-        public void __init__(string name, string documentation) {
+        public void __init__(string name, string doc) {
             _dict["__name__"] = name;
-            _dict["__doc__"] = documentation;
+            _dict["__doc__"] = doc;
         }
 
         public object __getattribute__(CodeContext/*!*/ context, string name) {
@@ -138,6 +138,9 @@ namespace IronPython.Runtime {
                 return res;
             } else if (DynamicHelpers.GetPythonType(this).TryGetNonCustomMember(context, this, name, out res)) {
                 return res;
+            } else if (DynamicHelpers.GetPythonType(this).TryResolveMixedSlot(context, "__getattr__", out slot) &&
+                slot.TryGetValue(context, this, DynamicHelpers.GetPythonType(this), out res)) {
+                return PythonCalls.Call(context, res, name);
             }
 
             return OperationFailed.Value;

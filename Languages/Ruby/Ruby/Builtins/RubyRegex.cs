@@ -154,12 +154,18 @@ namespace IronRuby.Builtins {
                 pattern = _pattern.ConvertToString();
             }
 
+            List<string> warnings;
             Regex result;
             try {
-                result = new Regex(RegexpTransformer.Transform(pattern, _options, out _hasGAnchor), ToClrOptions(_options));
+                result = new Regex(RegexpTransformer.Transform(pattern, _options, out _hasGAnchor, out warnings), ToClrOptions(_options));
             } catch (Exception e) {
                 throw new RegexpError(e.Message);
             }
+
+            // TODO: report
+            //if (warnings != null) {
+            //    ...
+            //}
 
             _cachedKCode = kc;
             _cachedRegex = result;
@@ -256,7 +262,7 @@ namespace IronRuby.Builtins {
 
 #if DEBUG
             if (RubyOptions.CompileRegexps) {
-#if SILVERLIGHT // RegexOptions.Compiled
+#if SILVERLIGHT || WIN8 // RegexOptions.Compiled
                 throw new NotSupportedException("RegexOptions.Compiled is not supported on Silverlight");
 #else
                 result |= RegexOptions.Compiled;

@@ -27,7 +27,7 @@ using Microsoft.Scripting.Utils;
 using IronPython.Runtime;
 using IronPython.Runtime.Binding;
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using MSAst = System.Linq.Expressions;
 #else
 using MSAst = Microsoft.Scripting.Ast;
@@ -169,7 +169,7 @@ namespace IronPython.Compiler.Ast {
             get { return false; }
         }
 
-        internal virtual bool NeedsLocalContext {
+        internal bool NeedsLocalContext {
             get {
                 return NeedsLocalsDictionary || ContainsNestedFreeVariables;
             }
@@ -704,7 +704,7 @@ namespace IronPython.Compiler.Ast {
             return ((ClosureExpression)GetVariableExpression(variable.Variable)).ClosureCell;
         }
 
-        internal MSAst.Expression GetVariableExpression(PythonVariable variable) {
+        internal virtual MSAst.Expression GetVariableExpression(PythonVariable variable) {
             if (variable.IsGlobal) {
                 return GlobalParent.ModuleVariables[variable];
             }

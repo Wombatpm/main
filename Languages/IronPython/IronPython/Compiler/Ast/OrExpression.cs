@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using MSAst = System.Linq.Expressions;
 #else
 using MSAst = Microsoft.Scripting.Ast;
@@ -80,7 +80,8 @@ namespace IronPython.Compiler.Ast {
 
         public override Type Type {
             get {
-                return _left.Type == _right.Type ? _left.Type : typeof(object);
+                Type leftType = _left.Type;
+                return leftType == _right.Type ? leftType : typeof(object);
             }
         }
 

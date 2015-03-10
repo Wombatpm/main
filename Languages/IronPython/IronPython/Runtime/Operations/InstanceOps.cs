@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using Microsoft.Scripting.Ast;
@@ -96,7 +96,7 @@ namespace IronPython.Runtime.Operations {
             get {
                 if (_New == null) {
                     _New = (BuiltinFunction)PythonTypeOps.GetSlot(
-                        TypeInfo.GetExtensionMemberGroup(typeof(object), typeof(ObjectOps).GetMember("__new__")),
+                        PythonTypeInfo.GetExtensionMemberGroup(typeof(object), typeof(ObjectOps).GetMember("__new__")),
                         "__new__",
                         false // privateBinding
                     );
@@ -240,7 +240,7 @@ namespace IronPython.Runtime.Operations {
             // add in the non-dynamic members from the dynamic objects base class.
             Type t = self.GetType();
             while (typeof(IDynamicMetaObjectProvider).IsAssignableFrom(t)) {
-                t = t.BaseType;
+                t = t.GetBaseType();
             }
 
             res.extend(DynamicHelpers.GetPythonTypeFromType(t).GetMemberNames(context));
@@ -766,7 +766,7 @@ namespace IronPython.Runtime.Operations {
 
         [PropertyMethod, StaticExtensionMethod]
         public static List/*!*/ Get__all__<T>(CodeContext/*!*/ context) {
-            Debug.Assert(typeof(T).IsSealed && typeof(T).IsAbstract, "__all__ should only be produced for static members"); 
+            Debug.Assert(typeof(T).IsSealed() && typeof(T).IsAbstract(), "__all__ should only be produced for static members"); 
 
             PythonType pt = DynamicHelpers.GetPythonTypeFromType(typeof(T));
 
@@ -805,13 +805,13 @@ namespace IronPython.Runtime.Operations {
                 }
 
                 BuiltinMethodDescriptor method = pts as BuiltinMethodDescriptor;
-                if (method != null && (!method.DeclaringType.IsSealed || !method.DeclaringType.IsAbstract)) {
+                if (method != null && (!method.DeclaringType.IsSealed() || !method.DeclaringType.IsAbstract())) {
                     // inherited object member on a static class (GetHashCode, Equals, etc...)
                     return false;
                 }
 
                 BuiltinFunction bf = pts as BuiltinFunction;
-                if (bf != null && (!bf.DeclaringType.IsSealed || !bf.DeclaringType.IsAbstract)) {
+                if (bf != null && (!bf.DeclaringType.IsSealed() || !bf.DeclaringType.IsAbstract())) {
                     // __new__/ReferenceEquals inherited from object
                     return false;
                 }
@@ -882,7 +882,7 @@ namespace IronPython.Runtime.Operations {
 
         #endregion
 
-#if !SILVERLIGHT
+#if FEATURE_SERIALIZATION
         /// <summary>
         /// Implements __reduce_ex__ for .NET types which are serializable.  This uses the .NET
         /// serializer to get a string of raw data which can be serialized.

@@ -30,7 +30,7 @@ using Microsoft.Scripting.Utils;
 using IronPython.Runtime;
 using IronPython.Runtime.Operations;
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using MSAst = System.Linq.Expressions;
 #else
 using MSAst = Microsoft.Scripting.Ast;
@@ -99,7 +99,7 @@ namespace IronPython.Compiler.Ast {
 
         internal override MSAst.Expression LocalContext {
             get {
-                if (NeedsLocalsDictionary || ContainsNestedFreeVariables) {
+                if (NeedsLocalContext) {
                     return base.LocalContext;
                 }
 
@@ -457,7 +457,8 @@ namespace IronPython.Compiler.Ast {
                 return;
             }
             if (lookup != null) {
-                instructions.EmitCall(typeof(PythonOps).GetMethod(lookup.IsLocal ? "SetLocal" : "SetGlobal"));
+                var setter = typeof(PythonOps).GetMethod(lookup.IsLocal ? "SetLocal" : "SetGlobal");
+                instructions.Emit(CallInstruction.Create(setter));
                 return;
             }
 
@@ -575,7 +576,7 @@ namespace IronPython.Compiler.Ast {
 
             MSAst.ParameterExpression localContext = null;
             ReadOnlyCollectionBuilder<MSAst.ParameterExpression> locals = new ReadOnlyCollectionBuilder<MSAst.ParameterExpression>();
-            if (NeedsLocalsDictionary || ContainsNestedFreeVariables) {
+            if (NeedsLocalContext) {
                 localContext = LocalCodeContextVariable;
                 locals.Add(localContext);
             }

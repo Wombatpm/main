@@ -50,7 +50,15 @@ namespace IronPython.Modules {
         }
 
         public static Sha256Object sha256(Bytes data) {
-            return new Sha256Object(data);
+            return new Sha256Object((IList<byte>)data);
+        }
+
+        public static Sha256Object sha256(PythonBuffer data) {
+            return new Sha256Object((IList<byte>)data);
+        }
+
+        public static Sha256Object sha256(ByteArray data) {
+            return new Sha256Object((IList<byte>)data);
         }
 
         public static Sha256Object sha256() {
@@ -67,7 +75,7 @@ namespace IronPython.Modules {
 
         [PythonHidden]
         public sealed class Sha256Object : HashBase
-#if !SILVERLIGHT
+#if FEATURE_ICLONEABLE
             , ICloneable 
 #endif
         {
@@ -94,7 +102,7 @@ namespace IronPython.Modules {
             public Sha256Object copy() {
                 return new Sha256Object(_bytes);
             }
-#if !SILVERLIGHT
+#if FEATURE_ICLONEABLE
             object ICloneable.Clone() {
                 return copy();
             }
@@ -124,6 +132,10 @@ namespace IronPython.Modules {
             update((IList<byte>)newBytes);
         }
 
+        public void update(ByteArray newBytes) {
+            update((IList<byte>)newBytes);
+        }
+
         internal void update(IList<byte> newBytes) {
             byte[] updatedBytes = new byte[_bytes.Length + newBytes.Count];
             Array.Copy(_bytes, updatedBytes, _bytes.Length);
@@ -135,6 +147,10 @@ namespace IronPython.Modules {
         [Documentation("update(string) -> None (update digest with string data)")]
         public void update(object newData) {
             update(Converter.ConvertToString(newData).MakeByteArray());
+        }
+
+        public void update(PythonBuffer buffer) {
+            update((IList<byte>)buffer);
         }
 
         [Documentation("digest() -> int (current digest value)")]

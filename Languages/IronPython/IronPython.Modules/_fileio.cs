@@ -12,6 +12,17 @@
  *
  *
  * ***************************************************************************/
+#if FEATURE_CORE_DLR
+using System.Linq.Expressions;
+#else
+using Microsoft.Scripting.Ast;
+#endif
+
+#if FEATURE_NUMERICS
+using System.Numerics;
+#else
+using Microsoft.Scripting.Math;
+#endif
 
 using System;
 using System.Collections;
@@ -30,14 +41,7 @@ using IronPython.Runtime.Binding;
 using IronPython.Runtime.Operations;
 using IronPython.Runtime.Types;
 using IronPython.Runtime.Exceptions;
-
-#if CLR2
-using Microsoft.Scripting.Ast;
-using Microsoft.Scripting.Math;
-#else
-using System.Linq.Expressions;
-using System.Numerics;
-#endif
+using Microsoft.Scripting.Utils;
 
 // TODO: Documentation copied from CPython is inadequate in some places and wrong in others.
 
@@ -475,11 +479,6 @@ namespace IronPython.Modules {
                 Bytes bBytes = b as Bytes;
                 if (bBytes != null) {
                     return write(bBytes);
-                }
-
-                PythonBuffer bBuffer = b as PythonBuffer;
-                if (bBuffer != null) {
-                    return write(bBuffer.ToString());
                 }
 
                 ArrayModule.array bPythonArray = b as ArrayModule.array;

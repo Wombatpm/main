@@ -23,9 +23,6 @@ set RUBY19_EXE=%DLR_ROOT%\External.LCA_RESTRICTED\Languages\Ruby\ruby19\bin\ruby
 set RUBYOPT=
 set GEM_PATH=%RUBY19_BIN%\..\lib\ruby\gems\1.9.1
 
-REM -- Nullify the existing environment
-call %DLR_ROOT%\Test\Scripts\SetTestEnv.bat
-
 REM -- IronPython environment variables
 set IRONPYTHONPATH=%DLR_ROOT%\External.LCA_RESTRICTED\Languages\IronPython\27\Lib
 
@@ -67,6 +64,13 @@ if EXIST "%ProgramFiles%\Microsoft SDKs\Windows\v7.0A\bin\NETFX 4.0 Tools\sn.exe
   goto SnDone
 )
 
+
+if EXIST "%ProgramFiles%\Microsoft SDKs\Windows\v8.0A\bin\NETFX 4.0 Tools\sn.exe" (
+  set SN_UTIL="%ProgramFiles%\Microsoft SDKs\Windows\v8.0A\bin\NETFX 4.0 Tools\sn.exe"
+  goto SnDone
+)
+
+
 if EXIST "%PROGRAM_FILES_64%\Microsoft SDKs\Windows\v7.0A\bin\NETFX 4.0 Tools\sn.exe" (
   set SN_UTIL="%PROGRAM_FILES_64%\Microsoft SDKs\Windows\v7.0A\bin\NETFX 4.0 Tools\sn.exe"
   goto SnDone
@@ -76,6 +80,22 @@ REM SN_UTIL should be defined even if we can't find sn.exe.
 set SN_UTIL="sn.exe"
 
 :SnDone
+REM VS2013
+if exist "%PROGRAM_FILES_32%\Microsoft Visual Studio 12.0\Common7\Tools\vsvars32.bat" (
+    call "%PROGRAM_FILES_32%\Microsoft Visual Studio 12.0\Common7\Tools\vsvars32.bat"
+    goto EnvDone
+)
+
+REM VS2012
+if exist "%PROGRAM_FILES_32%\Microsoft Visual Studio 11.0\Common7\Tools\vsvars32.bat" (
+    call "%PROGRAM_FILES_32%\Microsoft Visual Studio 11.0\Common7\Tools\vsvars32.bat"
+    goto EnvDone
+)
+
+if exist "%PROGRAM_FILES_32%\Microsoft Visual Studio 11.0\Common7\Tools\vsvars32.bat" (
+    call "%PROGRAM_FILES_32%\Microsoft Visual Studio 11.0\Common7\Tools\vsvars32.bat"
+    goto EnvDone
+)
 
 if exist "%PROGRAM_FILES_32%\Microsoft Visual Studio 10.0\Common7\Tools\vsvars32.bat" (
     call "%PROGRAM_FILES_32%\Microsoft Visual Studio 10.0\Common7\Tools\vsvars32.bat"

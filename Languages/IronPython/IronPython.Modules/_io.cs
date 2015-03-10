@@ -12,6 +12,17 @@
  *
  *
  * ***************************************************************************/
+#if FEATURE_CORE_DLR
+using System.Linq.Expressions;
+#else
+using Microsoft.Scripting.Ast;
+#endif
+
+#if FEATURE_NUMERICS
+using System.Numerics;
+#else
+using Microsoft.Scripting.Math;
+#endif
 
 using System;
 using System.Collections;
@@ -32,14 +43,6 @@ using IronPython.Runtime.Binding;
 using IronPython.Runtime.Exceptions;
 using IronPython.Runtime.Operations;
 using IronPython.Runtime.Types;
-
-#if CLR2
-using Microsoft.Scripting.Ast;
-using Microsoft.Scripting.Math;
-#else
-using System.Linq.Expressions;
-using System.Numerics;
-#endif
 
 [assembly: PythonModule("_io", typeof(IronPython.Modules.PythonIOModule))]
 namespace IronPython.Modules {
@@ -3214,9 +3217,7 @@ namespace IronPython.Modules {
 
             string str = buf as string;
             if (str == null) {
-                if (buf is PythonBuffer) {
-                    str = ((PythonBuffer)buf).ToString();
-                } else if (buf is Extensible<string>) {
+                if (buf is Extensible<string>) {
                     str = ((Extensible<string>)buf).Value;
                 }
             }

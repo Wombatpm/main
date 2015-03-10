@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using MSAst = System.Linq.Expressions;
 #else
 using MSAst = Microsoft.Scripting.Ast;
@@ -230,7 +230,15 @@ namespace Microsoft.Scripting.Debugging {
                 MSAst.ParameterExpression pendingLocal = _pendingLocals[i];
                 MSAst.ParameterExpression verifiedLocal = pendingLocal;
 
+                if (_pendingToVariableInfosMap.ContainsKey(pendingLocal)) {
+                    continue;
+                }
+
                 string alias;
+
+                if (_pendingToVariableInfosMap.ContainsKey(pendingLocal)) {
+                    continue;
+                }
 
                 // See if there's an alias for the local
                 if (_lambdaInfo.VariableAliases == null || !_lambdaInfo.VariableAliases.TryGetValue(pendingLocal, out alias)) {

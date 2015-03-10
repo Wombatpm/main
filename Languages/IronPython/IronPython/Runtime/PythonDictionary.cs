@@ -91,8 +91,8 @@ namespace IronPython.Runtime {
             return new PythonDictionary(new StringDictionaryStorage(count));
         }
 
-        public void __init__(CodeContext/*!*/ context, object o, [ParamDictionary]IDictionary<object, object> kwArgs) {
-            update(context, o);
+        public void __init__(CodeContext/*!*/ context, object o\u00F8, [ParamDictionary]IDictionary<object, object> kwArgs) {
+            update(context, o\u00F8);
             update(context, kwArgs);
         }
 
@@ -100,8 +100,8 @@ namespace IronPython.Runtime {
             update(context, kwArgs);
         }
 
-        public void __init__(CodeContext/*!*/ context, object o) {
-            update(context, o);
+        public void __init__(CodeContext/*!*/ context, object o\u00F8) {
+            update(context, o\u00F8);
         }
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic")]
@@ -135,6 +135,14 @@ namespace IronPython.Runtime {
             } catch (KeyNotFoundException) {
                 return false;
             }
+        }
+
+        [PythonHidden]
+        public bool RemoveDirect(object key) {
+            // Directly remove the value, without calling __delitem__
+            // This is used to implement pop() in a manner consistent with CPython, which does
+            // not call __delitem__ on pop().
+            return _storage.Remove(ref _storage, key);
         }
 
         [PythonHidden]
@@ -182,7 +190,9 @@ namespace IronPython.Runtime {
 
         [PythonHidden]
         public bool Contains(KeyValuePair<object, object> item) {
-            return _storage.Contains(item.Key);
+            object result;
+            return _storage.TryGetValue(item.Key, out result) &&
+                PythonOps.EqualRetBool(result, item.Value);
         }
 
         [PythonHidden]
@@ -274,7 +284,7 @@ namespace IronPython.Runtime {
             }
         }
 
-        private void SetItem(object key, object value) {
+        internal void SetItem(object key, object value) {
             _storage.Add(ref _storage, key, value);
         }
 
@@ -289,7 +299,7 @@ namespace IronPython.Runtime {
 
 
         public virtual void __delitem__(object key) {
-            if (!_storage.Remove(ref _storage, key)) {
+            if (!this.RemoveDirect(key)) {
                 throw PythonOps.KeyError(key);
             }
         }
@@ -396,17 +406,17 @@ namespace IronPython.Runtime {
         public void update() {
         }
 
-        public void update(CodeContext/*!*/ context, [ParamDictionary]IDictionary<object, object> b) {
-            DictionaryOps.update(context, this, b);
+        public void update(CodeContext/*!*/ context, [ParamDictionary]IDictionary<object, object> other\u00F8) {
+            DictionaryOps.update(context, this, other\u00F8);
         }
 
-        public void update(CodeContext/*!*/ context, object b) {
-            DictionaryOps.update(context, this, b);
+        public void update(CodeContext/*!*/ context, object other\u00F8) {
+            DictionaryOps.update(context, this, other\u00F8);
         }
 
-        public void update(CodeContext/*!*/ context, object b, [ParamDictionary]IDictionary<object, object> f) {
-            DictionaryOps.update(context, this, b);
-            DictionaryOps.update(context, this, f);
+        public void update(CodeContext/*!*/ context, object other\u00F8, [ParamDictionary]IDictionary<object, object> otherArgs\u00F8) {
+            DictionaryOps.update(context, this, other\u00F8);
+            DictionaryOps.update(context, this, otherArgs\u00F8);
         }
 
         private static object fromkeysAny(CodeContext/*!*/ context, PythonType cls, object o, object value) {
@@ -833,7 +843,7 @@ namespace IronPython.Runtime {
         #endregion
     }
 
-#if !SILVERLIGHT // environment variables not available
+#if FEATURE_PROCESS
     [Serializable]
     internal sealed class EnvironmentDictionaryStorage : DictionaryStorage {
         private readonly CommonDictionaryStorage/*!*/ _storage = new CommonDictionaryStorage();

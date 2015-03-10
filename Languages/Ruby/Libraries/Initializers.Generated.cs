@@ -54,7 +54,9 @@ namespace IronRuby.Builtins {
             IronRuby.Builtins.RubyModule def48 = DefineGlobalModule("Enumerable", typeof(IronRuby.Builtins.Enumerable), 0x0000000F, LoadEnumerable_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
             IronRuby.Builtins.RubyModule def2 = DefineGlobalModule("Errno", typeof(IronRuby.Builtins.Errno), 0x0000000F, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
             IronRuby.Builtins.RubyModule def36 = DefineModule("File::Constants", typeof(IronRuby.Builtins.RubyFileOps.Constants), 0x0000000F, null, null, LoadFile__Constants_Constants, IronRuby.Builtins.RubyModule.EmptyArray);
+            #if FEATURE_FILESYSTEM
             DefineGlobalModule("FileTest", typeof(IronRuby.Builtins.FileTest), 0x0000000F, LoadFileTest_Instance, LoadFileTest_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
             DefineGlobalModule("GC", typeof(IronRuby.Builtins.RubyGC), 0x0000000F, LoadGC_Instance, LoadGC_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
             IronRuby.Builtins.RubyModule def38 = DefineModule("IO::WaitReadable", typeof(IronRuby.Builtins.RubyIOOps.WaitReadable), 0x0000000F, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
             IronRuby.Builtins.RubyModule def39 = DefineModule("IO::WaitWritable", typeof(IronRuby.Builtins.RubyIOOps.WaitWritable), 0x0000000F, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
@@ -73,7 +75,7 @@ namespace IronRuby.Builtins {
             ExtendClass(typeof(Microsoft.Scripting.Actions.TypeTracker), 0x00000000, null, LoadMicrosoft__Scripting__Actions__TypeTracker_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
             DefineGlobalModule("ObjectSpace", typeof(IronRuby.Builtins.ObjectSpace), 0x0000000F, null, LoadObjectSpace_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
             IronRuby.Builtins.RubyModule def55 = DefineGlobalModule("Precision", typeof(IronRuby.Builtins.Precision), 0x0000000F, LoadPrecision_Instance, LoadPrecision_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
-            #if !SILVERLIGHT
+            #if FEATURE_PROCESS
             IronRuby.Builtins.RubyModule def40 = DefineGlobalModule("Process", typeof(IronRuby.Builtins.RubyProcess), 0x0000000F, LoadProcess_Instance, LoadProcess_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
             #endif
             #if !SILVERLIGHT
@@ -113,16 +115,14 @@ namespace IronRuby.Builtins {
             DefineGlobalClass("Dir", typeof(IronRuby.Builtins.RubyDir), 0x0000000F, Context.ObjectClass, LoadDir_Instance, LoadDir_Class, null, new IronRuby.Builtins.RubyModule[] {def48}, 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, IronRuby.Builtins.RubyDir>(IronRuby.Builtins.RubyDir.Create)
             );
-            #if !SILVERLIGHT
             IronRuby.Builtins.RubyClass def9 = DefineGlobalClass("Encoding", typeof(IronRuby.Builtins.RubyEncoding), 0x00000007, Context.ObjectClass, LoadEncoding_Instance, LoadEncoding_Class, LoadEncoding_Constants, IronRuby.Builtins.RubyModule.EmptyArray);
-            #endif
             DefineGlobalClass("Enumerator", typeof(IronRuby.Builtins.Enumerator), 0x0000000F, Context.ObjectClass, LoadEnumerator_Instance, null, null, new IronRuby.Builtins.RubyModule[] {def48}, 
                 new Func<IronRuby.Builtins.RubyClass, System.Object, System.String, System.Object[], IronRuby.Builtins.Enumerator>(IronRuby.Builtins.Enumerator.Create)
             );
             IronRuby.Builtins.RubyClass def59 = Context.ExceptionClass = DefineGlobalClass("Exception", typeof(System.Exception), 0x00000007, Context.ObjectClass, LoadException_Instance, LoadException_Class, null, IronRuby.Builtins.RubyModule.EmptyArray, 
             new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(BuiltinsLibraryInitializer.ExceptionFactory__Exception));
             Context.FalseClass = DefineGlobalClass("FalseClass", typeof(IronRuby.Builtins.FalseClass), 0x0000000F, Context.ObjectClass, LoadFalseClass_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
-            #if !SILVERLIGHT
+            #if FEATURE_FILESYSTEM
             IronRuby.Builtins.RubyClass def46 = DefineClass("File::Stat", typeof(System.IO.FileSystemInfo), 0x00000007, Context.ObjectClass, LoadFile__Stat_Instance, null, null, new IronRuby.Builtins.RubyModule[] {def58}, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, System.IO.FileSystemInfo>(IronRuby.Builtins.RubyFileOps.RubyStatOps.Create)
             );
@@ -144,7 +144,7 @@ namespace IronRuby.Builtins {
             DefineGlobalClass("Proc", typeof(IronRuby.Builtins.Proc), 0x00000007, Context.ObjectClass, LoadProc_Instance, LoadProc_Class, null, IronRuby.Builtins.RubyModule.EmptyArray, 
                 new Action<IronRuby.Builtins.RubyClass, System.Object[]>(IronRuby.Builtins.ProcOps.Error)
             );
-            #if !SILVERLIGHT && !SILVERLIGHT
+            #if FEATURE_PROCESS && FEATURE_PROCESS
             IronRuby.Builtins.RubyClass def41 = DefineClass("Process::Status", typeof(IronRuby.Builtins.RubyProcess.Status), 0x0000000F, Context.ObjectClass, LoadProcess__Status_Instance, LoadProcess__Status_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
             #endif
             DefineGlobalClass("Range", typeof(IronRuby.Builtins.Range), 0x00000007, Context.ObjectClass, LoadRange_Instance, null, null, new IronRuby.Builtins.RubyModule[] {def48}, 
@@ -157,7 +157,7 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Int32, IronRuby.Builtins.MutableString, IronRuby.Builtins.RubyRegex>(IronRuby.Builtins.RegexpOps.Create), 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Boolean, IronRuby.Builtins.MutableString, IronRuby.Builtins.RubyRegex>(IronRuby.Builtins.RegexpOps.Create)
             );
-            DefineGlobalClass("String", typeof(IronRuby.Builtins.MutableString), 0x00000007, Context.ObjectClass, LoadString_Instance, null, null, new IronRuby.Builtins.RubyModule[] {def58}, 
+            DefineGlobalClass("String", typeof(IronRuby.Builtins.MutableString), 0x00000007, Context.ObjectClass, LoadString_Instance, LoadString_Class, null, new IronRuby.Builtins.RubyModule[] {def58}, 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString>(IronRuby.Builtins.MutableStringOps.Create), 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString>(IronRuby.Builtins.MutableStringOps.Create), 
                 new Func<IronRuby.Builtins.RubyClass, System.Byte[], IronRuby.Builtins.MutableString>(IronRuby.Builtins.MutableStringOps.Create)
@@ -166,8 +166,12 @@ namespace IronRuby.Builtins {
                 new Action<IronRuby.Builtins.RubyClass, System.Object[]>(IronRuby.Builtins.RubyStructOps.AllocatorUndefined)
             );
             DefineGlobalClass("Symbol", typeof(IronRuby.Builtins.RubySymbol), 0x00000007, Context.ObjectClass, LoadSymbol_Instance, LoadSymbol_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #if FEATURE_THREAD
             DefineGlobalClass("Thread", typeof(System.Threading.Thread), 0x00000007, Context.ObjectClass, LoadThread_Instance, LoadThread_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_THREAD
             DefineGlobalClass("ThreadGroup", typeof(IronRuby.Builtins.ThreadGroup), 0x0000000F, Context.ObjectClass, LoadThreadGroup_Instance, null, LoadThreadGroup_Constants, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
             DefineGlobalClass("Time", typeof(IronRuby.Builtins.RubyTime), 0x00000007, Context.ObjectClass, LoadTime_Instance, LoadTime_Class, null, new IronRuby.Builtins.RubyModule[] {def58}, 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.RubyTime>(IronRuby.Builtins.RubyTimeOps.Create)
             );
@@ -264,7 +268,8 @@ namespace IronRuby.Builtins {
             );
             IronRuby.Builtins.RubyClass def49 = DefineGlobalClass("SystemCallError", typeof(System.Runtime.InteropServices.ExternalException), 0x00000007, def51, LoadSystemCallError_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Runtime.InteropServices.ExternalException>(IronRuby.Builtins.SystemCallErrorOps.Factory), 
-                new Func<IronRuby.Builtins.RubyClass, System.Int32, System.Runtime.InteropServices.ExternalException>(IronRuby.Builtins.SystemCallErrorOps.Factory)
+                new Func<IronRuby.Builtins.RubyClass, System.Int32, System.Runtime.InteropServices.ExternalException>(IronRuby.Builtins.SystemCallErrorOps.Factory), 
+                new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Int32, System.Runtime.InteropServices.ExternalException>(IronRuby.Builtins.SystemCallErrorOps.Factory)
             );
             DefineGlobalClass("SystemStackError", typeof(IronRuby.Builtins.SystemStackError), 0x00000007, def51, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
             new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(BuiltinsLibraryInitializer.ExceptionFactory__SystemStackError));
@@ -274,29 +279,21 @@ namespace IronRuby.Builtins {
             new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(BuiltinsLibraryInitializer.ExceptionFactory__TypeError));
             DefineGlobalClass("ZeroDivisionError", typeof(System.DivideByZeroException), 0x00000007, def51, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
             new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(BuiltinsLibraryInitializer.ExceptionFactory__ZeroDivisionError));
-            #if !SILVERLIGHT
             IronRuby.Builtins.RubyClass def11 = DefineClass("Encoding::CompatibilityError", typeof(IronRuby.Builtins.EncodingCompatibilityError), 0x00000007, def50, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
             new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(BuiltinsLibraryInitializer.ExceptionFactory__Encoding__CompatibilityError));
-            #endif
-            #if !SILVERLIGHT
             IronRuby.Builtins.RubyClass def10 = DefineClass("Encoding::ConverterNotFoundError", typeof(IronRuby.Builtins.ConverterNotFoundError), 0x00000007, def50, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
             new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(BuiltinsLibraryInitializer.ExceptionFactory__Encoding__ConverterNotFoundError));
-            #endif
-            #if !SILVERLIGHT
             IronRuby.Builtins.RubyClass def30 = DefineClass("Encoding::InvalidByteSequenceError", typeof(IronRuby.Builtins.InvalidByteSequenceError), 0x00000007, def50, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
             new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(BuiltinsLibraryInitializer.ExceptionFactory__Encoding__InvalidByteSequenceError));
-            #endif
-            #if !SILVERLIGHT
             IronRuby.Builtins.RubyClass def42 = DefineClass("Encoding::UndefinedConversionError", typeof(IronRuby.Builtins.UndefinedConversionError), 0x00000007, def50, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
             new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(BuiltinsLibraryInitializer.ExceptionFactory__Encoding__UndefinedConversionError));
-            #endif
             DefineGlobalClass("EOFError", typeof(IronRuby.Builtins.EOFError), 0x0000000F, def52, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
             new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(BuiltinsLibraryInitializer.ExceptionFactory__EOFError));
             IronRuby.Builtins.RubyClass def47 = DefineClass("Errno::EACCES", typeof(System.UnauthorizedAccessException), 0x00000007, def49, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.UnauthorizedAccessException>(IronRuby.Builtins.Errno.UnauthorizedAccessExceptionOps.Create)
             );
             IronRuby.Builtins.RubyClass def13 = DefineClass("Errno::EADDRINUSE", typeof(IronRuby.Builtins.Errno.AddressInUseError), 0x0000000F, def49, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
-            IronRuby.Builtins.RubyClass def25 = DefineClass("Errno::EAGAIN", typeof(IronRuby.Builtins.Errno.ResourceTemporarilyUnavailableError), 0x0000000F, def49, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            IronRuby.Builtins.RubyClass def25 = DefineClass("Errno::EAGAIN", typeof(IronRuby.Builtins.Errno.ResourceTemporarilyUnavailableError), 0x0000000F, def49, null, null, LoadErrno__EAGAIN_Constants, IronRuby.Builtins.RubyModule.EmptyArray);
             IronRuby.Builtins.RubyClass def3 = DefineClass("Errno::EBADF", typeof(IronRuby.Builtins.BadFileDescriptorError), 0x00000007, def49, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, IronRuby.Builtins.BadFileDescriptorError>(IronRuby.Builtins.Errno.BadFileDescriptorErrorOps.Create)
             );
@@ -320,12 +317,14 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, IronRuby.Builtins.BadFileDescriptorError>(IronRuby.Builtins.Errno.ExecFormatErrorOps.Create)
             );
             IronRuby.Builtins.RubyClass def23 = DefineClass("Errno::ENOTCONN", typeof(IronRuby.Builtins.Errno.NotConnectedError), 0x0000000F, def49, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #if FEATURE_FILESYSTEM
             IronRuby.Builtins.RubyClass def44 = DefineClass("Errno::ENOTDIR", typeof(System.IO.DirectoryNotFoundException), 0x00000007, def49, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.IO.DirectoryNotFoundException>(IronRuby.Builtins.Errno.DirectoryNotFoundExceptionOps.Create)
             );
+            #endif
             IronRuby.Builtins.RubyClass def24 = DefineClass("Errno::EPIPE", typeof(IronRuby.Builtins.Errno.PipeError), 0x0000000F, def49, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
             IronRuby.Builtins.RubyClass def22 = DefineClass("Errno::ESPIPE", typeof(IronRuby.Builtins.Errno.InvalidSeekError), 0x0000000F, def49, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
-            IronRuby.Builtins.RubyClass def26 = DefineClass("Errno::EWOULDBLOCK", typeof(IronRuby.Builtins.Errno.WouldBlockError), 0x0000000F, def49, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            IronRuby.Builtins.RubyClass def26 = DefineClass("Errno::EWOULDBLOCK", typeof(IronRuby.Builtins.Errno.WouldBlockError), 0x0000000F, def49, null, null, LoadErrno__EWOULDBLOCK_Constants, IronRuby.Builtins.RubyModule.EmptyArray);
             IronRuby.Builtins.RubyClass def20 = DefineClass("Errno::EXDEV", typeof(IronRuby.Builtins.Errno.ImproperLinkError), 0x0000000F, def49, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
             DefineGlobalClass("FloatDomainError", typeof(IronRuby.Builtins.FloatDomainError), 0x0000000F, def53, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
             new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(BuiltinsLibraryInitializer.ExceptionFactory__FloatDomainError));
@@ -347,25 +346,17 @@ namespace IronRuby.Builtins {
             SetBuiltinConstant(Context.ObjectClass, "ARGF", def1);
             #endif
             SetBuiltinConstant(Context.ObjectClass, "ENV", def12);
-            #if !SILVERLIGHT
+            #if FEATURE_FILESYSTEM
             SetBuiltinConstant(def35, "Stat", def46);
             #endif
             SetBuiltinConstant(def4, "Name", def43);
-            #if !SILVERLIGHT && !SILVERLIGHT
+            #if FEATURE_PROCESS && FEATURE_PROCESS
             SetBuiltinConstant(def40, "Status", def41);
             #endif
-            #if !SILVERLIGHT
             SetBuiltinConstant(def9, "CompatibilityError", def11);
-            #endif
-            #if !SILVERLIGHT
             SetBuiltinConstant(def9, "ConverterNotFoundError", def10);
-            #endif
-            #if !SILVERLIGHT
             SetBuiltinConstant(def9, "InvalidByteSequenceError", def30);
-            #endif
-            #if !SILVERLIGHT
             SetBuiltinConstant(def9, "UndefinedConversionError", def42);
-            #endif
             SetBuiltinConstant(def2, "EACCES", def47);
             SetBuiltinConstant(def2, "EADDRINUSE", def13);
             SetBuiltinConstant(def2, "EAGAIN", def25);
@@ -382,7 +373,9 @@ namespace IronRuby.Builtins {
             SetBuiltinConstant(def2, "ENOENT", def45);
             SetBuiltinConstant(def2, "ENOEXEC", def27);
             SetBuiltinConstant(def2, "ENOTCONN", def23);
+            #if FEATURE_FILESYSTEM
             SetBuiltinConstant(def2, "ENOTDIR", def44);
+            #endif
             SetBuiltinConstant(def2, "EPIPE", def24);
             SetBuiltinConstant(def2, "ESPIPE", def22);
             SetBuiltinConstant(def2, "EWOULDBLOCK", def26);
@@ -925,16 +918,20 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, System.Collections.Generic.IDictionary<System.Object, System.Object>, IronRuby.Builtins.RubyArray>(IronRuby.Builtins.RubyDir.GetEntries)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "exist?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyDir.Exists)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "exists?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyDir.Exists)
             );
             
+            #endif
             DefineLibraryMethod(module, "foreach", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Runtime.BlockParam, IronRuby.Builtins.RubyClass, System.Object, System.Object>(IronRuby.Builtins.RubyDir.ForEach)
@@ -979,35 +976,60 @@ namespace IronRuby.Builtins {
             
         }
         
-        #if !SILVERLIGHT
         private static void LoadEncoding_Constants(IronRuby.Builtins.RubyModule/*!*/ module) {
             SetBuiltinConstant(module, "ANSI_X3_4_1968", IronRuby.Builtins.RubyEncodingOps.US_ASCII);
             SetBuiltinConstant(module, "ASCII", IronRuby.Builtins.RubyEncodingOps.US_ASCII);
             SetBuiltinConstant(module, "ASCII_8BIT", IronRuby.Builtins.RubyEncodingOps.ASCII_8BIT);
+            #if FEATURE_ENCODING
             SetBuiltinConstant(module, "Big5", IronRuby.Builtins.RubyEncodingOps.Big5);
+            #endif
+            #if FEATURE_ENCODING
             SetBuiltinConstant(module, "BIG5", IronRuby.Builtins.RubyEncodingOps.Big5);
+            #endif
             SetBuiltinConstant(module, "BINARY", IronRuby.Builtins.RubyEncodingOps.BINARY);
+            #if FEATURE_ENCODING
             SetBuiltinConstant(module, "EUC_JP", IronRuby.Builtins.RubyEncodingOps.EUC_JP);
+            #endif
+            #if FEATURE_ENCODING
             SetBuiltinConstant(module, "ISO_8859_15", IronRuby.Builtins.RubyEncodingOps.ISO_8859_15);
+            #endif
+            #if FEATURE_ENCODING
             SetBuiltinConstant(module, "ISO_8859_9", IronRuby.Builtins.RubyEncodingOps.ISO_8859_9);
+            #endif
+            #if FEATURE_ENCODING
             SetBuiltinConstant(module, "ISO8859_15", IronRuby.Builtins.RubyEncodingOps.ISO_8859_15);
+            #endif
+            #if FEATURE_ENCODING
             SetBuiltinConstant(module, "ISO8859_9", IronRuby.Builtins.RubyEncodingOps.ISO_8859_9);
+            #endif
+            #if FEATURE_ENCODING
             SetBuiltinConstant(module, "KOI8_R", IronRuby.Builtins.RubyEncodingOps.KOI8_R);
+            #endif
+            #if FEATURE_ENCODING
             SetBuiltinConstant(module, "Shift_JIS", IronRuby.Builtins.RubyEncodingOps.SHIFT_JIS);
+            #endif
+            #if FEATURE_ENCODING
             SetBuiltinConstant(module, "SHIFT_JIS", IronRuby.Builtins.RubyEncodingOps.SHIFT_JIS);
+            #endif
+            #if FEATURE_ENCODING
             SetBuiltinConstant(module, "TIS_620", IronRuby.Builtins.RubyEncodingOps.TIS_620);
+            #endif
             SetBuiltinConstant(module, "US_ASCII", IronRuby.Builtins.RubyEncodingOps.US_ASCII);
             SetBuiltinConstant(module, "UTF_16BE", IronRuby.Builtins.RubyEncodingOps.UTF_16BE);
             SetBuiltinConstant(module, "UTF_16LE", IronRuby.Builtins.RubyEncodingOps.UTF_16LE);
+            #if FEATURE_ENCODING
             SetBuiltinConstant(module, "UTF_32BE", IronRuby.Builtins.RubyEncodingOps.UTF_32BE);
+            #endif
+            #if FEATURE_ENCODING
             SetBuiltinConstant(module, "UTF_32LE", IronRuby.Builtins.RubyEncodingOps.UTF_32LE);
+            #endif
+            #if FEATURE_ENCODING
             SetBuiltinConstant(module, "UTF_7", IronRuby.Builtins.RubyEncodingOps.UTF_7);
+            #endif
             SetBuiltinConstant(module, "UTF_8", IronRuby.Builtins.RubyEncodingOps.UTF_8);
             
         }
-        #endif
         
-        #if !SILVERLIGHT
         private static void LoadEncoding_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "ascii_compatible?", 0x51, 
                 0x00000000U, 
@@ -1045,9 +1067,7 @@ namespace IronRuby.Builtins {
             );
             
         }
-        #endif
         
-        #if !SILVERLIGHT
         private static void LoadEncoding_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "aliases", 0x61, 
                 0x00000000U, 
@@ -1111,7 +1131,6 @@ namespace IronRuby.Builtins {
             );
             
         }
-        #endif
         
         private static void LoadEnumerable_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "all?", 0x51, 
@@ -1229,6 +1248,12 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, IronRuby.Builtins.Proc, System.Object>>, IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.BlockParam, System.Object, System.Object, System.Object>(IronRuby.Builtins.Enumerable.Grep)
             );
             
+            DefineLibraryMethod(module, "group_by", 0x51, 
+                0x00000000U, 0x00000002U, 
+                new Func<IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, IronRuby.Builtins.Proc, System.Object>>, IronRuby.Runtime.BlockParam, System.Object, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.Enumerable.GetGroupByEnumerator), 
+                new Func<IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, IronRuby.Builtins.Proc, System.Object>>, IronRuby.Runtime.BlockParam, System.Object, IronRuby.Builtins.Hash>(IronRuby.Builtins.Enumerable.GroupBy)
+            );
+            
             DefineLibraryMethod(module, "include?", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, IronRuby.Builtins.Proc, System.Object>>, IronRuby.Runtime.BinaryOpStorage, System.Object, System.Object, System.Object>(IronRuby.Builtins.Enumerable.Contains)
@@ -1251,6 +1276,11 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, IronRuby.Builtins.Proc, System.Object>>, IronRuby.Runtime.ComparisonStorage, IronRuby.Runtime.BlockParam, System.Object, System.Object>(IronRuby.Builtins.Enumerable.GetMaximum)
             );
             
+            DefineLibraryMethod(module, "max_by", 0x51, 
+                0x00000000U, 
+                new Func<IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, IronRuby.Builtins.Proc, System.Object>>, IronRuby.Runtime.ComparisonStorage, IronRuby.Runtime.BlockParam, System.Object, System.Object>(IronRuby.Builtins.Enumerable.GetMaxBy)
+            );
+            
             DefineLibraryMethod(module, "member?", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, IronRuby.Builtins.Proc, System.Object>>, IronRuby.Runtime.BinaryOpStorage, System.Object, System.Object, System.Object>(IronRuby.Builtins.Enumerable.Contains)
@@ -1259,6 +1289,11 @@ namespace IronRuby.Builtins {
             DefineLibraryMethod(module, "min", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, IronRuby.Builtins.Proc, System.Object>>, IronRuby.Runtime.ComparisonStorage, IronRuby.Runtime.BlockParam, System.Object, System.Object>(IronRuby.Builtins.Enumerable.GetMinimum)
+            );
+            
+            DefineLibraryMethod(module, "min_by", 0x51, 
+                0x00000000U, 
+                new Func<IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, IronRuby.Builtins.Proc, System.Object>>, IronRuby.Runtime.ComparisonStorage, IronRuby.Runtime.BlockParam, System.Object, System.Object>(IronRuby.Builtins.Enumerable.GetMinBy)
             );
             
             DefineLibraryMethod(module, "minmax", 0x51, 
@@ -1326,8 +1361,8 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "zip", 0x51, 
-                0x80040008U, 
-                new Func<IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, IronRuby.Builtins.Proc, System.Object>>, IronRuby.Runtime.BlockParam, System.Object, System.Collections.IList[], System.Object>(IronRuby.Builtins.Enumerable.Zip)
+                0x80100020U, 
+                new Func<IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, IronRuby.Builtins.Proc, System.Object>>, IronRuby.Runtime.ConversionStorage<System.Collections.IList>, IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, IronRuby.Builtins.Proc, System.Object>>, IronRuby.Runtime.BlockParam, System.Object, System.Object[], System.Object>(IronRuby.Builtins.Enumerable.Zip)
             );
             
         }
@@ -1518,7 +1553,22 @@ namespace IronRuby.Builtins {
             
         }
         
+        private static void LoadErrno__EAGAIN_Constants(IronRuby.Builtins.RubyModule/*!*/ module) {
+            SetBuiltinConstant(module, "Errno", IronRuby.Builtins.Errno.ResourceTemporarilyUnavailableError.Errno);
+            
+        }
+        
+        private static void LoadErrno__EWOULDBLOCK_Constants(IronRuby.Builtins.RubyModule/*!*/ module) {
+            SetBuiltinConstant(module, "Errno", IronRuby.Builtins.Errno.WouldBlockError.Errno);
+            
+        }
+        
         private static void LoadException_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
+            DefineLibraryMethod(module, "==", 0x51, 
+                0x00000000U, 
+                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.RespondToStorage, System.Exception, System.Object, System.Boolean>(IronRuby.Builtins.ExceptionOps.Equal)
+            );
+            
             DefineLibraryMethod(module, "backtrace", 0x51, 
                 0x00000000U, 
                 new Func<System.Exception, IronRuby.Builtins.RubyArray>(IronRuby.Builtins.ExceptionOps.GetBacktrace)
@@ -1548,11 +1598,6 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "to_s", 0x51, 
-                0x00000000U, 
-                new Func<System.Exception, System.Object>(IronRuby.Builtins.ExceptionOps.StringRepresentation)
-            );
-            
-            DefineLibraryMethod(module, "to_str", 0x51, 
                 0x00000000U, 
                 new Func<System.Exception, System.Object>(IronRuby.Builtins.ExceptionOps.StringRepresentation)
             );
@@ -1598,11 +1643,13 @@ namespace IronRuby.Builtins {
         }
         
         private static void LoadFile_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "atime", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.RubyFile, IronRuby.Builtins.RubyTime>(IronRuby.Builtins.RubyFileOps.AccessTime)
             );
             
+            #endif
             DefineLibraryMethod(module, "chmod", 0x51, 
                 0x00010000U, 
                 new Func<IronRuby.Builtins.RubyFile, System.Int32, System.Int32>(IronRuby.Builtins.RubyFileOps.Chmod)
@@ -1614,11 +1661,13 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.RubyFile, System.Object, System.Object, System.Int32>(IronRuby.Builtins.RubyFileOps.ChangeOwner)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "ctime", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.RubyFile, IronRuby.Builtins.RubyTime>(IronRuby.Builtins.RubyFileOps.CreateTime)
             );
             
+            #endif
             DefineLibraryMethod(module, "initialize", 0x52, 
                 0x00800000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<System.Nullable<System.Int32>>, IronRuby.Runtime.ConversionStorage<System.Collections.Generic.IDictionary<System.Object, System.Object>>, IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyFile, System.Object, System.Object, System.Object, System.Collections.Generic.IDictionary<System.Object, System.Object>, IronRuby.Builtins.RubyFile>(IronRuby.Builtins.RubyFileOps.Reinitialize)
@@ -1629,32 +1678,38 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Builtins.RubyFile, IronRuby.Builtins.MutableString>(IronRuby.Builtins.RubyFileOps.Inspect)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "lstat", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Builtins.RubyFile, System.IO.FileSystemInfo>(IronRuby.Builtins.RubyFileOps.Stat)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "mtime", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.RubyFile, IronRuby.Builtins.RubyTime>(IronRuby.Builtins.RubyFileOps.ModifiedTime)
             );
             
+            #endif
             DefineLibraryMethod(module, "path", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Builtins.RubyFile, IronRuby.Builtins.MutableString>(IronRuby.Builtins.RubyFileOps.GetPath)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "stat", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Builtins.RubyFile, System.IO.FileSystemInfo>(IronRuby.Builtins.RubyFileOps.Stat)
             );
             
+            #endif
             DefineLibraryMethod(module, "to_path", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Builtins.RubyFile, IronRuby.Builtins.MutableString>(IronRuby.Builtins.RubyFileOps.GetPath)
             );
             
-            #if !SILVERLIGHT
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "truncate", 0x51, 
                 0x00010000U, 
                 new Func<IronRuby.Builtins.RubyFile, System.Int32, System.Int32>(IronRuby.Builtins.RubyFileOps.Truncate)
@@ -1669,26 +1724,32 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, System.Object, IronRuby.Builtins.MutableString>(IronRuby.Builtins.RubyFileOps.AbsolutePath)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "atime", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, IronRuby.Builtins.RubyTime>(IronRuby.Builtins.RubyFileOps.AccessTime)
             );
             
+            #endif
             DefineLibraryMethod(module, "basename", 0x61, 
                 0x00040008U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString>(IronRuby.Builtins.RubyFileOps.BaseName)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "blockdev?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsBlockDevice)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "chardev?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsCharDevice)
             );
             
+            #endif
             DefineLibraryMethod(module, "chmod", 0x61, 
                 0x00020000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Int32, System.Object, System.Int32>(IronRuby.Builtins.RubyFileOps.Chmod)
@@ -1700,47 +1761,59 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.RubyClass, System.Object, System.Object, IronRuby.Builtins.MutableString, System.Int32>(IronRuby.Builtins.RubyFileOps.ChangeOwner)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "ctime", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, IronRuby.Builtins.RubyTime>(IronRuby.Builtins.RubyFileOps.CreateTime)
             );
             
+            #endif
             DefineLibraryMethod(module, "delete", 0x61, 
                 0x00000000U, 0x80000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, System.Int32>(IronRuby.Builtins.RubyFileOps.Delete), 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object[], System.Int32>(IronRuby.Builtins.RubyFileOps.Delete)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "directory?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsDirectory)
             );
             
+            #endif
             DefineLibraryMethod(module, "dirname", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, IronRuby.Builtins.MutableString>(IronRuby.Builtins.RubyFileOps.DirName)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "executable?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsExecutable)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "executable_real?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsExecutable)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "exist?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.Exists)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "exists?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.Exists)
             );
             
+            #endif
             DefineLibraryMethod(module, "expand_path", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, System.Object, IronRuby.Builtins.MutableString>(IronRuby.Builtins.RubyFileOps.ExpandPath)
@@ -1751,11 +1824,13 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, IronRuby.Builtins.MutableString>(IronRuby.Builtins.RubyFileOps.GetExtension)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "file?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsFile)
             );
             
+            #endif
             DefineLibraryMethod(module, "fnmatch", 0x61, 
                 0x00020004U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, System.Object, IronRuby.Builtins.MutableString, System.Object, System.Int32, System.Boolean>(IronRuby.Builtins.RubyFileOps.FnMatch)
@@ -1766,137 +1841,174 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, System.Object, IronRuby.Builtins.MutableString, System.Object, System.Int32, System.Boolean>(IronRuby.Builtins.RubyFileOps.FnMatch)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "ftype", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, IronRuby.Builtins.MutableString>(IronRuby.Builtins.RubyFileOps.FileType)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "grpowned?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsGroupOwned)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "identical?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.AreIdentical)
             );
             
+            #endif
             DefineLibraryMethod(module, "join", 0x61, 
                 0x80000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object[], IronRuby.Builtins.MutableString>(IronRuby.Builtins.RubyFileOps.Join)
             );
             
-            #if !SILVERLIGHT
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "link", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, System.Object, System.Int32>(IronRuby.Builtins.RubyFileOps.Link)
             );
             
             #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "lstat", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, System.IO.FileSystemInfo>(IronRuby.Builtins.RubyFileOps.Stat)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "mtime", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, IronRuby.Builtins.RubyTime>(IronRuby.Builtins.RubyFileOps.ModifiedTime)
             );
             
+            #endif
             DefineRuleGenerator(module, "open", 0x61, IronRuby.Builtins.RubyFileOps.Open());
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "owned?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsUserOwned)
             );
             
+            #endif
             DefineLibraryMethod(module, "path", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, IronRuby.Builtins.MutableString>(IronRuby.Builtins.RubyFileOps.ToPath)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "pipe?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsPipe)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "readable?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsReadable)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "readable_real?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsReadable)
             );
             
-            #if !SILVERLIGHT
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "readlink", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.Readlink)
             );
             
             #endif
+            DefineLibraryMethod(module, "realpath", 0x61, 
+                0x00000000U, 
+                new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, System.Object, IronRuby.Builtins.MutableString>(IronRuby.Builtins.RubyFileOps.Realpath)
+            );
+            
             DefineLibraryMethod(module, "rename", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, System.Object, System.Int32>(IronRuby.Builtins.RubyFileOps.Rename)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "setgid?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsSetGid)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "setuid?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsSetUid)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "size", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Int32>(IronRuby.Builtins.RubyFileOps.Size)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "size?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Object>(IronRuby.Builtins.RubyFileOps.NullableSize)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "socket?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsSocket)
             );
             
+            #endif
             DefineLibraryMethod(module, "split", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, IronRuby.Builtins.RubyArray>(IronRuby.Builtins.RubyFileOps.Split)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "stat", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, System.IO.FileSystemInfo>(IronRuby.Builtins.RubyFileOps.Stat)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "sticky?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Object>(IronRuby.Builtins.RubyFileOps.IsSticky)
             );
             
-            #if !SILVERLIGHT
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "symlink", 0x61, 
                 0x00010002U, 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Object>(IronRuby.Builtins.RubyFileOps.SymLink)
             );
             
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "symlink?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsSymLink)
             );
             
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "truncate", 0x61, 
                 0x00040000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, System.Int32, System.Int32>(IronRuby.Builtins.RubyFileOps.Truncate)
@@ -1915,7 +2027,7 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object[], System.Int32>(IronRuby.Builtins.RubyFileOps.Delete)
             );
             
-            #if !SILVERLIGHT
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "utime", 0x61, 
                 0x0000000cU, 0x80000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, IronRuby.Builtins.RubyTime, IronRuby.Builtins.RubyTime, System.Object, System.Int32>(IronRuby.Builtins.RubyFileOps.UpdateTimes), 
@@ -1923,21 +2035,27 @@ namespace IronRuby.Builtins {
             );
             
             #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "writable?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsWritable)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "writable_real?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsWritable)
             );
             
+            #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "zero?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.RubyFileOps.IsZeroLength)
             );
             
+            #endif
         }
         
         private static void LoadFile__Constants_Constants(IronRuby.Builtins.RubyModule/*!*/ module) {
@@ -1962,7 +2080,7 @@ namespace IronRuby.Builtins {
             
         }
         
-        #if !SILVERLIGHT
+        #if FEATURE_FILESYSTEM
         private static void LoadFile__Stat_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "<=>", 0x51, 
                 0x00000002U, 0x00000000U, 
@@ -2173,6 +2291,7 @@ namespace IronRuby.Builtins {
         }
         #endif
         
+        #if FEATURE_FILESYSTEM
         private static void LoadFileTest_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "blockdev?", 0x52, 
                 0x00000000U, 
@@ -2274,13 +2393,11 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Object>(IronRuby.Builtins.FileTest.IsSticky)
             );
             
-            #if !SILVERLIGHT
             DefineLibraryMethod(module, "symlink?", 0x52, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.FileTest.IsSymLink)
             );
             
-            #endif
             DefineLibraryMethod(module, "writable?", 0x52, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.FileTest.IsWritable)
@@ -2297,7 +2414,9 @@ namespace IronRuby.Builtins {
             );
             
         }
+        #endif
         
+        #if FEATURE_FILESYSTEM
         private static void LoadFileTest_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "blockdev?", 0x61, 
                 0x00000000U, 
@@ -2399,13 +2518,11 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Object>(IronRuby.Builtins.FileTest.IsSticky)
             );
             
-            #if !SILVERLIGHT
             DefineLibraryMethod(module, "symlink?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.FileTest.IsSymLink)
             );
             
-            #endif
             DefineLibraryMethod(module, "writable?", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyModule, System.Object, System.Boolean>(IronRuby.Builtins.FileTest.IsWritable)
@@ -2422,6 +2539,7 @@ namespace IronRuby.Builtins {
             );
             
         }
+        #endif
         
         private static void LoadFixnum_Constants(IronRuby.Builtins.RubyModule/*!*/ module) {
             
@@ -2517,6 +2635,16 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.BinaryOpStorage, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Object, System.Object>(IronRuby.Builtins.HashOps.GetElement)
             );
             
+            DefineLibraryMethod(module, "compare_by_identity", 0x51, 
+                0x00000000U, 
+                new Func<IronRuby.Builtins.Hash, IronRuby.Builtins.Hash>(IronRuby.Builtins.HashOps.CompareByIdentity)
+            );
+            
+            DefineLibraryMethod(module, "compare_by_identity?", 0x51, 
+                0x00000000U, 
+                new Func<IronRuby.Builtins.Hash, System.Boolean>(IronRuby.Builtins.HashOps.IsCompareByIdentity)
+            );
+            
             DefineLibraryMethod(module, "default", 0x51, 
                 0x00000000U, 0x00000000U, 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.Hash, System.Object>(IronRuby.Builtins.HashOps.GetDefaultValue), 
@@ -2526,6 +2654,11 @@ namespace IronRuby.Builtins {
             DefineLibraryMethod(module, "default_proc", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Builtins.Hash, IronRuby.Builtins.Proc>(IronRuby.Builtins.HashOps.GetDefaultProc)
+            );
+            
+            DefineLibraryMethod(module, "default_proc=", 0x51, 
+                0x00010000U, 
+                new Func<IronRuby.Builtins.Hash, IronRuby.Builtins.Proc, IronRuby.Builtins.Proc>(IronRuby.Builtins.HashOps.SetDefaultProc)
             );
             
             DefineLibraryMethod(module, "default=", 0x51, 
@@ -2852,7 +2985,7 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Builtins.RubyIO, System.Int32, System.Int32, System.Int32>(IronRuby.Builtins.RubyIOOps.FileControl)
             );
             
-            #if !SILVERLIGHT
+            #if !SILVERLIGHT && !WIN8 && !WP75
             DefineLibraryMethod(module, "isatty", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Builtins.RubyIO, System.Boolean>(IronRuby.Builtins.RubyIOOps.IsAtty)
@@ -2910,11 +3043,16 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "readlines", 0x51, 
-                0x00060000U, 0x00000000U, 0x00000000U, 0x00020004U, 
-                new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.RubyIO, IronRuby.Builtins.MutableString, System.Int32, IronRuby.Builtins.RubyArray>(IronRuby.Builtins.RubyIOOps.ReadLines), 
+                0x00000000U, 0x00000000U, 0x00020004U, 0x00060000U, 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.RubyIO, IronRuby.Builtins.RubyArray>(IronRuby.Builtins.RubyIOOps.ReadLines), 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.RubyIO, Microsoft.Scripting.Runtime.DynamicNull, IronRuby.Builtins.RubyArray>(IronRuby.Builtins.RubyIOOps.ReadLines), 
-                new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.RubyIO, IronRuby.Runtime.Union<IronRuby.Builtins.MutableString, System.Int32>, IronRuby.Builtins.RubyArray>(IronRuby.Builtins.RubyIOOps.ReadLines)
+                new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.RubyIO, IronRuby.Runtime.Union<IronRuby.Builtins.MutableString, System.Int32>, IronRuby.Builtins.RubyArray>(IronRuby.Builtins.RubyIOOps.ReadLines), 
+                new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.RubyIO, IronRuby.Builtins.MutableString, System.Int32, IronRuby.Builtins.RubyArray>(IronRuby.Builtins.RubyIOOps.ReadLines)
+            );
+            
+            DefineLibraryMethod(module, "readpartial", 0x51, 
+                0x00030000U, 
+                new Func<IronRuby.Builtins.RubyIO, System.Int32, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString>(IronRuby.Builtins.RubyIOOps.ReadPartial)
             );
             
             DefineLibraryMethod(module, "reopen", 0x51, 
@@ -2981,7 +3119,7 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Builtins.RubyIO, IronRuby.Builtins.RubyIO>(IronRuby.Builtins.RubyIOOps.ToIO)
             );
             
-            #if !SILVERLIGHT
+            #if !SILVERLIGHT && !WIN8 && !WP75
             DefineLibraryMethod(module, "tty?", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Builtins.RubyIO, System.Boolean>(IronRuby.Builtins.RubyIOOps.IsAtty)
@@ -3008,6 +3146,11 @@ namespace IronRuby.Builtins {
         }
         
         private static void LoadIO_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
+            DefineLibraryMethod(module, "binread", 0x61, 
+                0x00070002U, 
+                new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Nullable<System.Int32>, System.Nullable<System.Int32>, IronRuby.Builtins.MutableString>(IronRuby.Builtins.RubyIOOps.Binread)
+            );
+            
             DefineLibraryMethod(module, "copy_stream", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Runtime.ConversionStorage<System.Int32>, IronRuby.Runtime.RespondToStorage, IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, System.Object, System.Object, System.Object>>, IronRuby.Builtins.RubyClass, System.Object, System.Object, System.Int32, System.Int32, System.Object>(IronRuby.Builtins.RubyIOOps.CopyStream)
@@ -3023,14 +3166,14 @@ namespace IronRuby.Builtins {
             
             DefineRuleGenerator(module, "open", 0x61, IronRuby.Builtins.RubyIOOps.Open());
             
-            #if !SILVERLIGHT
+            #if FEATURE_PROCESS
             DefineLibraryMethod(module, "pipe", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.RubyArray>(IronRuby.Builtins.RubyIOOps.OpenPipe)
             );
             
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_PROCESS
             DefineLibraryMethod(module, "popen", 0x61, 
                 0x000c0018U, 0x0006000cU, 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Runtime.BlockParam, IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, System.Object>(IronRuby.Builtins.RubyIOOps.OpenPipe), 
@@ -3443,6 +3586,14 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.BinaryOpStorage, System.Double, System.Object, System.Object>(IronRuby.Builtins.ClrFloat.DivMod)
             );
             
+            DefineLibraryMethod(module, "fdiv", 0x51, 
+                0x00000000U, 0x00000004U, 0x00000000U, 0x00000000U, 
+                new Func<System.Double, System.Int32, System.Double>(IronRuby.Builtins.ClrFloat.Divide), 
+                new Func<IronRuby.Runtime.RubyContext, System.Double, Microsoft.Scripting.Math.BigInteger, System.Double>(IronRuby.Builtins.ClrFloat.Divide), 
+                new Func<System.Double, System.Double, System.Double>(IronRuby.Builtins.ClrFloat.Divide), 
+                new Func<IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.BinaryOpStorage, System.Double, System.Object, System.Object>(IronRuby.Builtins.ClrFloat.Divide)
+            );
+            
             DefineLibraryMethod(module, "finite?", 0x51, 
                 0x00000000U, 
                 new Func<System.Double, System.Boolean>(IronRuby.Builtins.ClrFloat.IsFinite)
@@ -3477,8 +3628,9 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "round", 0x51, 
-                0x00000000U, 
-                new Func<System.Double, System.Object>(IronRuby.Builtins.ClrFloat.Round)
+                0x00000000U, 0x00000000U, 
+                new Func<System.Double, System.Object>(IronRuby.Builtins.ClrFloat.Round), 
+                new Func<System.Double, System.Int32, System.Object>(IronRuby.Builtins.ClrFloat.Round)
             );
             
             DefineLibraryMethod(module, "to_f", 0x51, 
@@ -4037,7 +4189,7 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.RubyContext, System.Object, System.Object>(IronRuby.Builtins.KernelOps.GetObjectId)
             );
             
-            #if !SILVERLIGHT
+            #if FEATURE_PROCESS
             DefineLibraryMethod(module, "`", 0x52, 
                 0x00020004U, 
                 new Func<IronRuby.Runtime.RubyContext, System.Object, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString>(IronRuby.Builtins.KernelOps.ExecuteCommand)
@@ -4126,15 +4278,15 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "define_singleton_method", 0x51, 
-                new[] { 0x0000000cU, 0x0002000cU, 0x0000000cU, 0x0002000cU, 0x0000000cU, 0x0004000aU, 0x0000000aU, 0x0002000cU}, 
-                new Func<IronRuby.Runtime.RubyScope, System.Object, IronRuby.Runtime.ClrName, IronRuby.Builtins.Proc, IronRuby.Builtins.Proc>(IronRuby.Builtins.KernelOps.DefineSingletonMethod), 
+                new[] { 0x0002000cU, 0x0000000cU, 0x0002000cU, 0x0000000cU, 0x0004000aU, 0x0000000aU, 0x0002000cU, 0x0000000cU}, 
                 new Func<IronRuby.Runtime.RubyScope, System.Object, System.String, IronRuby.Builtins.RubyMethod, IronRuby.Builtins.RubyMethod>(IronRuby.Builtins.KernelOps.DefineSingletonMethod), 
                 new Func<IronRuby.Runtime.RubyScope, System.Object, IronRuby.Runtime.ClrName, IronRuby.Builtins.RubyMethod, IronRuby.Builtins.RubyMethod>(IronRuby.Builtins.KernelOps.DefineSingletonMethod), 
                 new Func<IronRuby.Runtime.RubyScope, System.Object, System.String, IronRuby.Builtins.UnboundMethod, IronRuby.Builtins.UnboundMethod>(IronRuby.Builtins.KernelOps.DefineSingletonMethod), 
                 new Func<IronRuby.Runtime.RubyScope, System.Object, IronRuby.Runtime.ClrName, IronRuby.Builtins.UnboundMethod, IronRuby.Builtins.UnboundMethod>(IronRuby.Builtins.KernelOps.DefineSingletonMethod), 
                 new Func<IronRuby.Runtime.RubyScope, IronRuby.Runtime.BlockParam, System.Object, System.String, IronRuby.Builtins.Proc>(IronRuby.Builtins.KernelOps.DefineSingletonMethod), 
                 new Func<IronRuby.Runtime.RubyScope, IronRuby.Runtime.BlockParam, System.Object, IronRuby.Runtime.ClrName, IronRuby.Builtins.Proc>(IronRuby.Builtins.KernelOps.DefineSingletonMethod), 
-                new Func<IronRuby.Runtime.RubyScope, System.Object, System.String, IronRuby.Builtins.Proc, IronRuby.Builtins.Proc>(IronRuby.Builtins.KernelOps.DefineSingletonMethod)
+                new Func<IronRuby.Runtime.RubyScope, System.Object, System.String, IronRuby.Builtins.Proc, IronRuby.Builtins.Proc>(IronRuby.Builtins.KernelOps.DefineSingletonMethod), 
+                new Func<IronRuby.Runtime.RubyScope, System.Object, IronRuby.Runtime.ClrName, IronRuby.Builtins.Proc, IronRuby.Builtins.Proc>(IronRuby.Builtins.KernelOps.DefineSingletonMethod)
             );
             
             DefineLibraryMethod(module, "display", 0x51, 
@@ -4164,7 +4316,7 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.RubyScope, System.Object, IronRuby.Builtins.MutableString, IronRuby.Builtins.Proc, IronRuby.Builtins.MutableString, System.Int32, System.Object>(IronRuby.Builtins.KernelOps.Evaluate)
             );
             
-            #if !SILVERLIGHT
+            #if FEATURE_PROCESS
             DefineLibraryMethod(module, "exec", 0x52, 
                 0x00020004U, 0x8006000cU, 
                 new Action<IronRuby.Runtime.RubyContext, System.Object, IronRuby.Builtins.MutableString>(IronRuby.Builtins.KernelOps.Execute), 
@@ -4469,6 +4621,7 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.RubyContext, System.Object, System.Boolean, IronRuby.Builtins.RubyArray>(IronRuby.Builtins.KernelOps.GetSingletonMethods)
             );
             
+            #if FEATURE_THREAD
             DefineLibraryMethod(module, "sleep", 0x52, 
                 0x00000000U, 0x00000000U, 0x00000000U, 
                 new Action<System.Object>(IronRuby.Builtins.KernelOps.Sleep), 
@@ -4476,23 +4629,26 @@ namespace IronRuby.Builtins {
                 new Func<System.Object, System.Double, System.Int32>(IronRuby.Builtins.KernelOps.Sleep)
             );
             
+            #endif
             DefineLibraryMethod(module, "sprintf", 0x52, 
                 0x80020004U, 
                 new Func<IronRuby.Builtins.StringFormatterSiteStorage, System.Object, IronRuby.Builtins.MutableString, System.Object[], IronRuby.Builtins.MutableString>(IronRuby.Builtins.KernelOps.Sprintf)
             );
             
+            #if FEATURE_CRYPTOGRAPHY
             DefineLibraryMethod(module, "srand", 0x52, 
                 0x00000000U, 0x00020000U, 
                 new Func<IronRuby.Runtime.RubyContext, System.Object, System.Object>(IronRuby.Builtins.KernelOps.SeedRandomNumberGenerator), 
                 new Func<IronRuby.Runtime.RubyContext, System.Object, IronRuby.Runtime.IntegerValue, System.Object>(IronRuby.Builtins.KernelOps.SeedRandomNumberGenerator)
             );
             
+            #endif
             DefineLibraryMethod(module, "String", 0x52, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, System.Object, System.Object, System.Object>(IronRuby.Builtins.KernelOps.ToString)
             );
             
-            #if !SILVERLIGHT
+            #if FEATURE_PROCESS
             DefineLibraryMethod(module, "system", 0x52, 
                 0x00020004U, 0x8006000cU, 
                 new Func<IronRuby.Runtime.RubyContext, System.Object, IronRuby.Builtins.MutableString, System.Boolean>(IronRuby.Builtins.KernelOps.System), 
@@ -4515,6 +4671,7 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.RubyScope, IronRuby.Runtime.BlockParam, System.Object, System.Object>(IronRuby.Builtins.KernelOps.Tap)
             );
             
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "test", 0x52, 
                 0x00000004U, 0x00020000U, 0x000c0018U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, System.Object, IronRuby.Builtins.MutableString, System.Object, System.Object>(IronRuby.Builtins.KernelOps.Test), 
@@ -4522,6 +4679,7 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.RubyContext, System.Object, System.Int32, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, System.Object>(IronRuby.Builtins.KernelOps.Test)
             );
             
+            #endif
             DefineLibraryMethod(module, "throw", 0x52, 
                 0x00000000U, 
                 new Action<IronRuby.Runtime.RubyContext, System.Object, System.Object, System.Object>(IronRuby.Builtins.KernelOps.Throw)
@@ -4538,7 +4696,7 @@ namespace IronRuby.Builtins {
                 new Func<System.Object, IronRuby.Builtins.MutableString>(IronRuby.Builtins.KernelOps.ToS)
             );
             
-            #if !SILVERLIGHT
+            #if FEATURE_PROCESS
             DefineLibraryMethod(module, "trap", 0x52, 
                 0x00000000U, 0x00000002U, 
                 new Func<IronRuby.Runtime.RubyContext, System.Object, System.Object, IronRuby.Builtins.Proc, System.Object>(IronRuby.Builtins.KernelOps.Trap), 
@@ -4584,7 +4742,7 @@ namespace IronRuby.Builtins {
         }
         
         private static void LoadKernel_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
-            #if !SILVERLIGHT
+            #if FEATURE_PROCESS
             DefineLibraryMethod(module, "`", 0x61, 
                 0x00020004U, 
                 new Func<IronRuby.Runtime.RubyContext, System.Object, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString>(IronRuby.Builtins.KernelOps.ExecuteCommand)
@@ -4648,7 +4806,7 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.RubyScope, System.Object, IronRuby.Builtins.MutableString, IronRuby.Builtins.Proc, IronRuby.Builtins.MutableString, System.Int32, System.Object>(IronRuby.Builtins.KernelOps.Evaluate)
             );
             
-            #if !SILVERLIGHT
+            #if FEATURE_PROCESS
             DefineLibraryMethod(module, "exec", 0x61, 
                 0x00020004U, 0x8006000cU, 
                 new Action<IronRuby.Runtime.RubyContext, System.Object, IronRuby.Builtins.MutableString>(IronRuby.Builtins.KernelOps.Execute), 
@@ -4816,6 +4974,7 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.RubyContext, System.Object, IronRuby.Builtins.Proc, IronRuby.Builtins.Proc>(IronRuby.Builtins.KernelOps.SetTraceListener)
             );
             
+            #if FEATURE_THREAD
             DefineLibraryMethod(module, "sleep", 0x61, 
                 0x00000000U, 0x00000000U, 0x00000000U, 
                 new Action<System.Object>(IronRuby.Builtins.KernelOps.Sleep), 
@@ -4823,23 +4982,26 @@ namespace IronRuby.Builtins {
                 new Func<System.Object, System.Double, System.Int32>(IronRuby.Builtins.KernelOps.Sleep)
             );
             
+            #endif
             DefineLibraryMethod(module, "sprintf", 0x61, 
                 0x80020004U, 
                 new Func<IronRuby.Builtins.StringFormatterSiteStorage, System.Object, IronRuby.Builtins.MutableString, System.Object[], IronRuby.Builtins.MutableString>(IronRuby.Builtins.KernelOps.Sprintf)
             );
             
+            #if FEATURE_CRYPTOGRAPHY
             DefineLibraryMethod(module, "srand", 0x61, 
                 0x00000000U, 0x00020000U, 
                 new Func<IronRuby.Runtime.RubyContext, System.Object, System.Object>(IronRuby.Builtins.KernelOps.SeedRandomNumberGenerator), 
                 new Func<IronRuby.Runtime.RubyContext, System.Object, IronRuby.Runtime.IntegerValue, System.Object>(IronRuby.Builtins.KernelOps.SeedRandomNumberGenerator)
             );
             
+            #endif
             DefineLibraryMethod(module, "String", 0x61, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, System.Object, System.Object, System.Object>(IronRuby.Builtins.KernelOps.ToString)
             );
             
-            #if !SILVERLIGHT
+            #if FEATURE_PROCESS
             DefineLibraryMethod(module, "system", 0x61, 
                 0x00020004U, 0x8006000cU, 
                 new Func<IronRuby.Runtime.RubyContext, System.Object, IronRuby.Builtins.MutableString, System.Boolean>(IronRuby.Builtins.KernelOps.System), 
@@ -4847,6 +5009,7 @@ namespace IronRuby.Builtins {
             );
             
             #endif
+            #if FEATURE_FILESYSTEM
             DefineLibraryMethod(module, "test", 0x61, 
                 0x00000004U, 0x00020000U, 0x000c0018U, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, System.Object, IronRuby.Builtins.MutableString, System.Object, System.Object>(IronRuby.Builtins.KernelOps.Test), 
@@ -4854,12 +5017,13 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.RubyContext, System.Object, System.Int32, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, System.Object>(IronRuby.Builtins.KernelOps.Test)
             );
             
+            #endif
             DefineLibraryMethod(module, "throw", 0x61, 
                 0x00000000U, 
                 new Action<IronRuby.Runtime.RubyContext, System.Object, System.Object, System.Object>(IronRuby.Builtins.KernelOps.Throw)
             );
             
-            #if !SILVERLIGHT
+            #if FEATURE_PROCESS
             DefineLibraryMethod(module, "trap", 0x61, 
                 0x00000000U, 0x00000002U, 
                 new Func<IronRuby.Runtime.RubyContext, System.Object, System.Object, IronRuby.Builtins.Proc, System.Object>(IronRuby.Builtins.KernelOps.Trap), 
@@ -6148,7 +6312,7 @@ namespace IronRuby.Builtins {
             
         }
         
-        #if !SILVERLIGHT
+        #if FEATURE_PROCESS
         private static void LoadProcess_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "kill", 0x52, 
                 0x00000000U, 
@@ -6158,7 +6322,7 @@ namespace IronRuby.Builtins {
         }
         #endif
         
-        #if !SILVERLIGHT
+        #if FEATURE_PROCESS
         private static void LoadProcess_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "euid", 0x61, 
                 0x00000000U, 
@@ -6213,7 +6377,7 @@ namespace IronRuby.Builtins {
         }
         #endif
         
-        #if !SILVERLIGHT && !SILVERLIGHT
+        #if FEATURE_PROCESS && FEATURE_PROCESS
         private static void LoadProcess__Status_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "coredump?", 0x51, 
                 0x00000000U, 
@@ -6263,7 +6427,7 @@ namespace IronRuby.Builtins {
         }
         #endif
         
-        #if !SILVERLIGHT && !SILVERLIGHT
+        #if FEATURE_PROCESS && FEATURE_PROCESS
         private static void LoadProcess__Status_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             module.HideMethod("new");
         }
@@ -6284,6 +6448,11 @@ namespace IronRuby.Builtins {
             DefineLibraryMethod(module, "begin", 0x51, 
                 0x00000001U, 
                 new Func<IronRuby.Builtins.Range, System.Object>(IronRuby.Builtins.RangeOps.Begin)
+            );
+            
+            DefineLibraryMethod(module, "cover?", 0x51, 
+                0x00000002U, 
+                new Func<IronRuby.Runtime.ComparisonStorage, IronRuby.Builtins.Range, System.Object, System.Boolean>(IronRuby.Builtins.RangeOps.Cover)
             );
             
             DefineLibraryMethod(module, "each", 0x51, 
@@ -6338,15 +6507,27 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Builtins.Range, System.Object>(IronRuby.Builtins.RangeOps.End)
             );
             
+            DefineLibraryMethod(module, "max", 0x51, 
+                0x00000000U, 0x00000000U, 
+                new Func<IronRuby.Builtins.RangeOps.EachStorage, IronRuby.Builtins.Range, System.Object>(IronRuby.Builtins.RangeOps.GetMaximum), 
+                new Func<IronRuby.Builtins.RangeOps.EachStorage, IronRuby.Runtime.BlockParam, IronRuby.Builtins.Range, System.Object>(IronRuby.Builtins.RangeOps.GetMaximumBy)
+            );
+            
             DefineLibraryMethod(module, "member?", 0x51, 
                 0x00000002U, 
                 new Func<IronRuby.Runtime.ComparisonStorage, IronRuby.Builtins.Range, System.Object, System.Boolean>(IronRuby.Builtins.RangeOps.CaseEquals)
             );
             
+            DefineLibraryMethod(module, "min", 0x51, 
+                0x00000000U, 0x00000000U, 
+                new Func<IronRuby.Builtins.RangeOps.EachStorage, IronRuby.Builtins.Range, System.Object>(IronRuby.Builtins.RangeOps.GetMinimum), 
+                new Func<IronRuby.Builtins.RangeOps.EachStorage, IronRuby.Runtime.BlockParam, IronRuby.Builtins.Range, System.Object>(IronRuby.Builtins.RangeOps.GetMinimumBy)
+            );
+            
             DefineLibraryMethod(module, "step", 0x51, 
                 0x00000000U, 0x00000002U, 
-                new Func<IronRuby.Builtins.RangeOps.StepStorage, IronRuby.Builtins.Range, System.Object, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.RangeOps.GetStepEnumerator), 
-                new Func<IronRuby.Builtins.RangeOps.StepStorage, IronRuby.Runtime.BlockParam, IronRuby.Builtins.Range, System.Object, System.Object>(IronRuby.Builtins.RangeOps.Step)
+                new Func<IronRuby.Builtins.RangeOps.EachStorage, IronRuby.Builtins.Range, System.Object, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.RangeOps.GetStepEnumerator), 
+                new Func<IronRuby.Builtins.RangeOps.EachStorage, IronRuby.Runtime.BlockParam, IronRuby.Builtins.Range, System.Object, System.Object>(IronRuby.Builtins.RangeOps.Step)
             );
             
             DefineLibraryMethod(module, "to_s", 0x51, 
@@ -6697,11 +6878,11 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "each_line", 0x51, 
-                0x00000002U, 0x00010000U, 0x00020001U, 0x00000000U, 
+                0x00000000U, 0x00000002U, 0x00010000U, 0x00020001U, 
+                new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.MutableString, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.MutableStringOps.EachLine), 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Runtime.BlockParam, IronRuby.Builtins.MutableString, System.Object>(IronRuby.Builtins.MutableStringOps.EachLine), 
                 new Func<IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.MutableStringOps.EachLine), 
-                new Func<IronRuby.Runtime.BlockParam, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, System.Object>(IronRuby.Builtins.MutableStringOps.EachLine), 
-                new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.MutableString, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.MutableStringOps.EachLine)
+                new Func<IronRuby.Runtime.BlockParam, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, System.Object>(IronRuby.Builtins.MutableStringOps.EachLine)
             );
             
             DefineLibraryMethod(module, "empty?", 0x51, 
@@ -6812,11 +6993,11 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "lines", 0x51, 
-                0x00000002U, 0x00010000U, 0x00020001U, 0x00000000U, 
+                0x00000000U, 0x00000002U, 0x00010000U, 0x00020001U, 
+                new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.MutableString, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.MutableStringOps.EachLine), 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Runtime.BlockParam, IronRuby.Builtins.MutableString, System.Object>(IronRuby.Builtins.MutableStringOps.EachLine), 
                 new Func<IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.MutableStringOps.EachLine), 
-                new Func<IronRuby.Runtime.BlockParam, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, System.Object>(IronRuby.Builtins.MutableStringOps.EachLine), 
-                new Func<IronRuby.Runtime.RubyContext, IronRuby.Builtins.MutableString, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.MutableStringOps.EachLine)
+                new Func<IronRuby.Runtime.BlockParam, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, System.Object>(IronRuby.Builtins.MutableStringOps.EachLine)
             );
             
             DefineLibraryMethod(module, "ljust", 0x51, 
@@ -6877,10 +7058,10 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "rindex", 0x51, 
-                0x00010002U, 0x00030002U, 0x00040004U, 
+                0x00040004U, 0x00010002U, 0x00030002U, 
+                new Func<IronRuby.Runtime.RubyScope, IronRuby.Builtins.MutableString, IronRuby.Builtins.RubyRegex, System.Int32, System.Object>(IronRuby.Builtins.MutableStringOps.LastIndexOf), 
                 new Func<IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, System.Object>(IronRuby.Builtins.MutableStringOps.LastIndexOf), 
-                new Func<IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, System.Int32, System.Object>(IronRuby.Builtins.MutableStringOps.LastIndexOf), 
-                new Func<IronRuby.Runtime.RubyScope, IronRuby.Builtins.MutableString, IronRuby.Builtins.RubyRegex, System.Int32, System.Object>(IronRuby.Builtins.MutableStringOps.LastIndexOf)
+                new Func<IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, System.Int32, System.Object>(IronRuby.Builtins.MutableStringOps.LastIndexOf)
             );
             
             DefineLibraryMethod(module, "rjust", 0x51, 
@@ -7085,8 +7266,16 @@ namespace IronRuby.Builtins {
             
         }
         
+        private static void LoadString_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
+            DefineLibraryMethod(module, "try_convert", 0x61, 
+                0x00000000U, 
+                new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Builtins.RubyClass, System.Object, IronRuby.Builtins.MutableString>(IronRuby.Builtins.MutableStringOps.TryConvert)
+            );
+            
+        }
+        
         private static void LoadStruct_Constants(IronRuby.Builtins.RubyModule/*!*/ module) {
-            #if !SILVERLIGHT
+            #if FEATURE_PROCESS
             SetBuiltinConstant(module, "Tms", IronRuby.Builtins.RubyStructOps.CreateTmsClass(module));
             #endif
             
@@ -7427,6 +7616,11 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.BinaryOpStorage, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Boolean>(IronRuby.Builtins.IDictionaryOps.Equals)
             );
             
+            DefineLibraryMethod(module, "assoc", 0x51, 
+                0x00000000U, 
+                new Func<IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.RubyContext, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Object, IronRuby.Builtins.RubyArray>(IronRuby.Builtins.IDictionaryOps.Assoc)
+            );
+            
             DefineLibraryMethod(module, "clear", 0x51, 
                 0x00000000U, 0x00000000U, 
                 new Func<IronRuby.Builtins.Hash, System.Collections.Generic.IDictionary<System.Object, System.Object>>(IronRuby.Builtins.IDictionaryOps.Clear), 
@@ -7450,28 +7644,34 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "delete_if", 0x51, 
-                0x00000000U, 0x00000000U, 
+                0x00000000U, 0x00000000U, 0x00000001U, 0x00000001U, 
+                new Func<IronRuby.Builtins.Hash, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.IDictionaryOps.DeleteIf), 
+                new Func<System.Collections.Generic.IDictionary<System.Object, System.Object>, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.IDictionaryOps.DeleteIf), 
                 new Func<IronRuby.Runtime.BlockParam, IronRuby.Builtins.Hash, System.Object>(IronRuby.Builtins.IDictionaryOps.DeleteIf), 
                 new Func<IronRuby.Runtime.BlockParam, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Object>(IronRuby.Builtins.IDictionaryOps.DeleteIf)
             );
             
             DefineLibraryMethod(module, "each", 0x51, 
-                0x00000000U, 
+                0x00000000U, 0x00000002U, 
+                new Func<IronRuby.Runtime.RubyContext, System.Collections.Generic.IDictionary<System.Object, System.Object>, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.IDictionaryOps.Each), 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Runtime.BlockParam, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Object>(IronRuby.Builtins.IDictionaryOps.Each)
             );
             
             DefineLibraryMethod(module, "each_key", 0x51, 
-                0x00000000U, 
+                0x00000000U, 0x00000002U, 
+                new Func<IronRuby.Runtime.RubyContext, System.Collections.Generic.IDictionary<System.Object, System.Object>, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.IDictionaryOps.EachKey), 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Runtime.BlockParam, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Object>(IronRuby.Builtins.IDictionaryOps.EachKey)
             );
             
             DefineLibraryMethod(module, "each_pair", 0x51, 
-                0x00000000U, 
-                new Func<IronRuby.Runtime.RubyContext, IronRuby.Runtime.BlockParam, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Object>(IronRuby.Builtins.IDictionaryOps.EachPair)
+                0x00000000U, 0x00000002U, 
+                new Func<IronRuby.Runtime.RubyContext, System.Collections.Generic.IDictionary<System.Object, System.Object>, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.IDictionaryOps.Each), 
+                new Func<IronRuby.Runtime.RubyContext, IronRuby.Runtime.BlockParam, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Object>(IronRuby.Builtins.IDictionaryOps.Each)
             );
             
             DefineLibraryMethod(module, "each_value", 0x51, 
-                0x00000000U, 
+                0x00000000U, 0x00000002U, 
+                new Func<IronRuby.Runtime.RubyContext, System.Collections.Generic.IDictionary<System.Object, System.Object>, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.IDictionaryOps.EachValue), 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Runtime.BlockParam, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Object>(IronRuby.Builtins.IDictionaryOps.EachValue)
             );
             
@@ -7483,6 +7683,11 @@ namespace IronRuby.Builtins {
             DefineLibraryMethod(module, "fetch", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.Runtime.BlockParam, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Object, System.Object, System.Object>(IronRuby.Builtins.IDictionaryOps.Fetch)
+            );
+            
+            DefineLibraryMethod(module, "flatten", 0x51, 
+                0x00020000U, 
+                new Func<IronRuby.Runtime.ConversionStorage<System.Collections.IList>, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Int32, System.Collections.IList>(IronRuby.Builtins.IDictionaryOps.Flatten)
             );
             
             DefineLibraryMethod(module, "has_key?", 0x51, 
@@ -7503,16 +7708,6 @@ namespace IronRuby.Builtins {
             DefineLibraryMethod(module, "index", 0x51, 
                 0x00000000U, 
                 new Func<IronRuby.Runtime.BinaryOpStorage, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Object, System.Object>(IronRuby.Builtins.IDictionaryOps.Index)
-            );
-            
-            DefineLibraryMethod(module, "indexes", 0x51, 
-                0x80000000U, 
-                new Func<IronRuby.Runtime.RubyContext, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Object[], IronRuby.Builtins.RubyArray>(IronRuby.Builtins.IDictionaryOps.Indexes)
-            );
-            
-            DefineLibraryMethod(module, "indices", 0x51, 
-                0x80000000U, 
-                new Func<IronRuby.Runtime.RubyContext, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Object[], IronRuby.Builtins.RubyArray>(IronRuby.Builtins.IDictionaryOps.Indexes)
             );
             
             DefineLibraryMethod(module, "inspect", 0x51, 
@@ -7563,13 +7758,16 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "reject", 0x51, 
-                0x00000000U, 
+                0x00000000U, 0x00000004U, 
+                new Func<IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, System.Object, System.Object>>, IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, IronRuby.Builtins.RubyClass, System.Object>>, IronRuby.Runtime.RubyContext, System.Collections.Generic.IDictionary<System.Object, System.Object>, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.IDictionaryOps.Reject), 
                 new Func<IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, System.Object, System.Object, System.Object>>, IronRuby.Runtime.CallSiteStorage<Func<System.Runtime.CompilerServices.CallSite, IronRuby.Builtins.RubyClass, System.Object>>, IronRuby.Runtime.BlockParam, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Object>(IronRuby.Builtins.IDictionaryOps.Reject)
             );
             
             DefineLibraryMethod(module, "reject!", 0x51, 
-                0x00000000U, 0x00000000U, 
+                0x00000000U, 0x00000001U, 0x00000000U, 0x00000001U, 
+                new Func<IronRuby.Builtins.Hash, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.IDictionaryOps.RejectMutate), 
                 new Func<IronRuby.Runtime.BlockParam, IronRuby.Builtins.Hash, System.Object>(IronRuby.Builtins.IDictionaryOps.RejectMutate), 
+                new Func<System.Collections.Generic.IDictionary<System.Object, System.Object>, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.IDictionaryOps.RejectMutate), 
                 new Func<IronRuby.Runtime.BlockParam, System.Collections.Generic.IDictionary<System.Object, System.Object>, System.Object>(IronRuby.Builtins.IDictionaryOps.RejectMutate)
             );
             
@@ -7678,11 +7876,12 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "[]=", 0x51, 
-                0x00010000U, 0x00010000U, 0x00060000U, 0x00000008U, 
+                new[] { 0x00010000U, 0x00010000U, 0x00000000U, 0x00060000U, 0x00000000U}, 
                 new Func<IronRuby.Builtins.RubyArray, System.Int32, System.Object, System.Object>(IronRuby.Builtins.IListOps.SetElement), 
                 new Func<System.Collections.IList, System.Int32, System.Object, System.Object>(IronRuby.Builtins.IListOps.SetElement), 
+                new Func<IronRuby.Runtime.ConversionStorage<System.Collections.IList>, IronRuby.Runtime.ConversionStorage<System.Int32>, System.Collections.IList, System.Object, System.Object, System.Object, System.Object>(IronRuby.Builtins.IListOps.SetElement), 
                 new Func<IronRuby.Runtime.ConversionStorage<System.Collections.IList>, System.Collections.IList, System.Int32, System.Int32, System.Object, System.Object>(IronRuby.Builtins.IListOps.SetElement), 
-                new Func<IronRuby.Runtime.ConversionStorage<System.Collections.IList>, IronRuby.Runtime.ConversionStorage<System.Int32>, System.Collections.IList, IronRuby.Builtins.Range, System.Object, System.Object>(IronRuby.Builtins.IListOps.SetElement)
+                new Func<IronRuby.Runtime.ConversionStorage<System.Collections.IList>, IronRuby.Runtime.ConversionStorage<System.Int32>, System.Collections.IList, System.Object, System.Object, System.Object>(IronRuby.Builtins.IListOps.SetElement)
             );
             
             DefineLibraryMethod(module, "|", 0x51, 
@@ -7753,8 +7952,10 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "count", 0x51, 
-                0x00000000U, 
-                new Func<System.Collections.IList, System.Int32>(IronRuby.Builtins.IListOps.Length)
+                0x00000000U, 0x00000000U, 0x00000002U, 
+                new Func<System.Collections.IList, System.Int32>(IronRuby.Builtins.IListOps.Length), 
+                new Func<IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.BlockParam, System.Collections.IList, System.Object, System.Int32>(IronRuby.Builtins.IListOps.Count), 
+                new Func<IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.BlockParam, System.Collections.IList, System.Object>(IronRuby.Builtins.IListOps.Count)
             );
             
             DefineLibraryMethod(module, "delete", 0x51, 
@@ -7804,7 +8005,7 @@ namespace IronRuby.Builtins {
                 new[] { 0x00000000U, 0x00000000U, 0x00000000U, 0x00000008U, 0x00000001U, 0x00000001U, 0x00000002U, 0x0000000aU}, 
                 new Func<System.Collections.IList, System.Object, System.Int32, System.Collections.IList>(IronRuby.Builtins.IListOps.Fill), 
                 new Func<System.Collections.IList, System.Object, System.Int32, System.Int32, System.Collections.IList>(IronRuby.Builtins.IListOps.Fill), 
-                new Func<IronRuby.Runtime.ConversionStorage<System.Int32>, System.Collections.IList, System.Object, System.Object, System.Object, System.Collections.IList>(IronRuby.Builtins.IListOps.Fill), 
+                new Func<IronRuby.Runtime.ConversionStorage<System.Int32>, IronRuby.Runtime.BlockParam, System.Collections.IList, System.Object, System.Object, System.Object, System.Collections.IList>(IronRuby.Builtins.IListOps.Fill), 
                 new Func<IronRuby.Runtime.ConversionStorage<System.Int32>, System.Collections.IList, System.Object, IronRuby.Builtins.Range, System.Collections.IList>(IronRuby.Builtins.IListOps.Fill), 
                 new Func<IronRuby.Runtime.BlockParam, System.Collections.IList, System.Int32, System.Object>(IronRuby.Builtins.IListOps.Fill), 
                 new Func<IronRuby.Runtime.BlockParam, System.Collections.IList, System.Int32, System.Int32, System.Object>(IronRuby.Builtins.IListOps.Fill), 
@@ -7826,14 +8027,14 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "flatten", 0x51, 
-                0x00000000U, 
-                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.ConversionStorage<System.Collections.IList>, System.Collections.IList, System.Collections.IList>(IronRuby.Builtins.IListOps.Flatten)
+                0x00040000U, 
+                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.ConversionStorage<System.Collections.IList>, System.Collections.IList, System.Int32, System.Collections.IList>(IronRuby.Builtins.IListOps.Flatten)
             );
             
             DefineLibraryMethod(module, "flatten!", 0x51, 
-                0x00000000U, 0x00000000U, 
-                new Func<IronRuby.Runtime.ConversionStorage<System.Collections.IList>, IronRuby.Builtins.RubyArray, System.Collections.IList>(IronRuby.Builtins.IListOps.FlattenInPlace), 
-                new Func<IronRuby.Runtime.ConversionStorage<System.Collections.IList>, System.Collections.IList, System.Collections.IList>(IronRuby.Builtins.IListOps.FlattenInPlace)
+                0x00020000U, 0x00020000U, 
+                new Func<IronRuby.Runtime.ConversionStorage<System.Collections.IList>, IronRuby.Builtins.RubyArray, System.Int32, System.Collections.IList>(IronRuby.Builtins.IListOps.FlattenInPlace), 
+                new Func<IronRuby.Runtime.ConversionStorage<System.Collections.IList>, System.Collections.IList, System.Int32, System.Collections.IList>(IronRuby.Builtins.IListOps.FlattenInPlace)
             );
             
             DefineLibraryMethod(module, "hash", 0x51, 
@@ -7884,6 +8085,11 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Runtime.JoinConversionStorage, IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, System.Collections.IList, System.Object, IronRuby.Builtins.MutableString>(IronRuby.Builtins.IListOps.JoinWithLazySeparatorConversion)
             );
             
+            DefineLibraryMethod(module, "keep_if", 0x51, 
+                0x00000000U, 
+                new Func<IronRuby.Runtime.BlockParam, System.Collections.IList, System.Object>(IronRuby.Builtins.IListOps.KeepIf)
+            );
+            
             DefineLibraryMethod(module, "last", 0x51, 
                 0x00000000U, 0x00010000U, 
                 new Func<System.Collections.IList, System.Object>(IronRuby.Builtins.IListOps.Last), 
@@ -7922,8 +8128,8 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "product", 0x51, 
-                0x80010002U, 
-                new Func<System.Collections.IList, System.Collections.IList[], IronRuby.Builtins.RubyArray>(IronRuby.Builtins.IListOps.Product)
+                0x80020004U, 
+                new Func<IronRuby.Runtime.BlockParam, System.Collections.IList, System.Collections.IList[], System.Collections.IList>(IronRuby.Builtins.IListOps.Product)
             );
             
             DefineLibraryMethod(module, "push", 0x51, 
@@ -7968,14 +8174,40 @@ namespace IronRuby.Builtins {
             );
             
             DefineLibraryMethod(module, "rindex", 0x51, 
-                0x00000001U, 0x00000000U, 
+                0x00000000U, 0x00000001U, 0x00000000U, 
+                new Func<System.Collections.IList, IronRuby.Builtins.Enumerator>(IronRuby.Builtins.IListOps.GetReverseIndexEnumerator), 
                 new Func<IronRuby.Runtime.BlockParam, System.Collections.IList, System.Object>(IronRuby.Builtins.IListOps.ReverseIndex), 
                 new Func<IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.BlockParam, System.Collections.IList, System.Object, System.Object>(IronRuby.Builtins.IListOps.ReverseIndex)
             );
             
-            DefineLibraryMethod(module, "shift", 0x51, 
+            DefineLibraryMethod(module, "rotate", 0x51, 
+                0x00000000U, 0x00020000U, 
+                new Func<IronRuby.Runtime.UnaryOpStorage, System.Collections.IList, System.Collections.IList>(IronRuby.Builtins.IListOps.Rotate), 
+                new Func<IronRuby.Runtime.UnaryOpStorage, System.Collections.IList, System.Int32, System.Collections.IList>(IronRuby.Builtins.IListOps.Rotate)
+            );
+            
+            DefineLibraryMethod(module, "rotate!", 0x51, 
+                0x00000000U, 0x00010000U, 
+                new Func<System.Collections.IList, System.Collections.IList>(IronRuby.Builtins.IListOps.InPlaceRotate), 
+                new Func<System.Collections.IList, System.Int32, System.Collections.IList>(IronRuby.Builtins.IListOps.InPlaceRotate)
+            );
+            
+            DefineLibraryMethod(module, "sample", 0x51, 
+                0x00000000U, 0x00000000U, 0x00020000U, 
+                new Func<IronRuby.Runtime.RubyContext, System.Collections.IList, System.Object>(IronRuby.Builtins.IListOps.Sample), 
+                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.ConversionStorage<System.Int32>, System.Collections.IList, System.Object, System.Collections.IList>(IronRuby.Builtins.IListOps.Sample), 
+                new Func<IronRuby.Runtime.UnaryOpStorage, System.Collections.IList, System.Int32, System.Collections.IList>(IronRuby.Builtins.IListOps.Sample)
+            );
+            
+            DefineLibraryMethod(module, "select!", 0x51, 
                 0x00000000U, 
-                new Func<System.Collections.IList, System.Object>(IronRuby.Builtins.IListOps.Shift)
+                new Func<IronRuby.Runtime.BlockParam, System.Collections.IList, System.Object>(IronRuby.Builtins.IListOps.SelectInPlace)
+            );
+            
+            DefineLibraryMethod(module, "shift", 0x51, 
+                0x00000000U, 0x00020000U, 
+                new Func<System.Collections.IList, System.Object>(IronRuby.Builtins.IListOps.Shift), 
+                new Func<IronRuby.Runtime.UnaryOpStorage, System.Collections.IList, System.Int32, System.Object>(IronRuby.Builtins.IListOps.Shift)
             );
             
             DefineLibraryMethod(module, "shuffle", 0x51, 
@@ -8039,13 +8271,13 @@ namespace IronRuby.Builtins {
             
             DefineLibraryMethod(module, "uniq", 0x51, 
                 0x00000000U, 
-                new Func<IronRuby.Runtime.UnaryOpStorage, System.Collections.IList, System.Collections.IList>(IronRuby.Builtins.IListOps.Unique)
+                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.BlockParam, System.Collections.IList, System.Collections.IList>(IronRuby.Builtins.IListOps.Unique)
             );
             
             DefineLibraryMethod(module, "uniq!", 0x51, 
                 0x00000000U, 0x00000000U, 
-                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.BinaryOpStorage, IronRuby.Builtins.RubyArray, System.Collections.IList>(IronRuby.Builtins.IListOps.UniqueSelf), 
-                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.BinaryOpStorage, System.Collections.IList, System.Collections.IList>(IronRuby.Builtins.IListOps.UniqueSelf)
+                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.BlockParam, IronRuby.Builtins.RubyArray, System.Collections.IList>(IronRuby.Builtins.IListOps.UniqueSelf), 
+                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.BlockParam, System.Collections.IList, System.Collections.IList>(IronRuby.Builtins.IListOps.UniqueSelf)
             );
             
             DefineLibraryMethod(module, "unshift", 0x51, 
@@ -8384,7 +8616,7 @@ namespace IronRuby.Builtins {
         private static void LoadSystemCallError_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "errno", 0x51, 
                 0x00000000U, 
-                new Func<System.Runtime.InteropServices.ExternalException, System.Int32>(IronRuby.Builtins.SystemCallErrorOps.Errno)
+                new Func<System.Runtime.InteropServices.ExternalException, System.Object>(IronRuby.Builtins.SystemCallErrorOps.Errno)
             );
             
         }
@@ -8402,6 +8634,7 @@ namespace IronRuby.Builtins {
             
         }
         
+        #if FEATURE_THREAD
         private static void LoadThread_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "[]", 0x51, 
                 0x00000002U, 0x00000004U, 0x00000000U, 
@@ -8470,14 +8703,14 @@ namespace IronRuby.Builtins {
                 new Func<System.Threading.Thread, System.Threading.Thread>(IronRuby.Builtins.ThreadOps.Kill)
             );
             
-            #if !SILVERLIGHT
+            #if !SILVERLIGHT && !WP75
             DefineLibraryMethod(module, "priority", 0x51, 
                 0x00000000U, 
                 new Func<System.Threading.Thread, System.Object>(IronRuby.Builtins.ThreadOps.Priority)
             );
             
             #endif
-            #if !SILVERLIGHT
+            #if !SILVERLIGHT && !WP75
             DefineLibraryMethod(module, "priority=", 0x51, 
                 0x00000000U, 
                 new Func<System.Threading.Thread, System.Int32, System.Threading.Thread>(IronRuby.Builtins.ThreadOps.Priority)
@@ -8526,7 +8759,9 @@ namespace IronRuby.Builtins {
             
             #endif
         }
+        #endif
         
+        #if FEATURE_THREAD
         private static void LoadThread_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "abort_on_exception", 0x61, 
                 0x00000000U, 
@@ -8584,12 +8819,16 @@ namespace IronRuby.Builtins {
             );
             
         }
+        #endif
         
+        #if FEATURE_THREAD
         private static void LoadThreadGroup_Constants(IronRuby.Builtins.RubyModule/*!*/ module) {
             SetBuiltinConstant(module, "Default", IronRuby.Builtins.ThreadGroup.Default);
             
         }
+        #endif
         
+        #if FEATURE_THREAD
         private static void LoadThreadGroup_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "add", 0x51, 
                 0x00000003U, 
@@ -8602,6 +8841,7 @@ namespace IronRuby.Builtins {
             );
             
         }
+        #endif
         
         private static void LoadTime_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "-", 0x51, 
@@ -8867,13 +9107,6 @@ namespace IronRuby.Builtins {
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.RubyTime>(IronRuby.Builtins.RubyTimeOps.Now)
             );
             
-            #if !SILVERLIGHT
-            DefineLibraryMethod(module, "times", 0xba0061, 
-                0x00000000U, 
-                new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.RubyStruct>(IronRuby.Builtins.RubyTimeOps.Times)
-            );
-            
-            #endif
             DefineLibraryMethod(module, "utc", 0x61, 
                 0x00000000U, 0x80000000U, 
                 new Func<System.Object, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, System.Int32, IronRuby.Builtins.RubyTime>(IronRuby.Builtins.RubyTimeOps.CreateGmtTime), 
@@ -8966,18 +9199,14 @@ namespace IronRuby.Builtins {
             
         }
         
-        #if !SILVERLIGHT
         public static System.Exception/*!*/ ExceptionFactory__Encoding__ConverterNotFoundError(IronRuby.Builtins.RubyClass/*!*/ self, [DefaultParameterValueAttribute(null)]object message) {
             return IronRuby.Runtime.RubyExceptionData.InitializeException(new IronRuby.Builtins.ConverterNotFoundError(IronRuby.Runtime.RubyExceptionData.GetClrMessage(self, message), (System.Exception)null), message);
         }
         
-        #endif
-        #if !SILVERLIGHT
         public static System.Exception/*!*/ ExceptionFactory__Encoding__CompatibilityError(IronRuby.Builtins.RubyClass/*!*/ self, [DefaultParameterValueAttribute(null)]object message) {
             return IronRuby.Runtime.RubyExceptionData.InitializeException(new IronRuby.Builtins.EncodingCompatibilityError(IronRuby.Runtime.RubyExceptionData.GetClrMessage(self, message), (System.Exception)null), message);
         }
         
-        #endif
         public static System.Exception/*!*/ ExceptionFactory__EncodingError(IronRuby.Builtins.RubyClass/*!*/ self, [DefaultParameterValueAttribute(null)]object message) {
             return IronRuby.Runtime.RubyExceptionData.InitializeException(new IronRuby.Builtins.EncodingError(IronRuby.Runtime.RubyExceptionData.GetClrMessage(self, message), (System.Exception)null), message);
         }
@@ -8994,12 +9223,10 @@ namespace IronRuby.Builtins {
             return IronRuby.Runtime.RubyExceptionData.InitializeException(new IronRuby.Builtins.Interrupt(IronRuby.Runtime.RubyExceptionData.GetClrMessage(self, message), (System.Exception)null), message);
         }
         
-        #if !SILVERLIGHT
         public static System.Exception/*!*/ ExceptionFactory__Encoding__InvalidByteSequenceError(IronRuby.Builtins.RubyClass/*!*/ self, [DefaultParameterValueAttribute(null)]object message) {
             return IronRuby.Runtime.RubyExceptionData.InitializeException(new IronRuby.Builtins.InvalidByteSequenceError(IronRuby.Runtime.RubyExceptionData.GetClrMessage(self, message), (System.Exception)null), message);
         }
         
-        #endif
         public static System.Exception/*!*/ ExceptionFactory__LoadError(IronRuby.Builtins.RubyClass/*!*/ self, [DefaultParameterValueAttribute(null)]object message) {
             return IronRuby.Runtime.RubyExceptionData.InitializeException(new IronRuby.Builtins.LoadError(IronRuby.Runtime.RubyExceptionData.GetClrMessage(self, message), (System.Exception)null), message);
         }
@@ -9048,12 +9275,10 @@ namespace IronRuby.Builtins {
             return IronRuby.Runtime.RubyExceptionData.InitializeException(new IronRuby.Builtins.ThreadError(IronRuby.Runtime.RubyExceptionData.GetClrMessage(self, message), (System.Exception)null), message);
         }
         
-        #if !SILVERLIGHT
         public static System.Exception/*!*/ ExceptionFactory__Encoding__UndefinedConversionError(IronRuby.Builtins.RubyClass/*!*/ self, [DefaultParameterValueAttribute(null)]object message) {
             return IronRuby.Runtime.RubyExceptionData.InitializeException(new IronRuby.Builtins.UndefinedConversionError(IronRuby.Runtime.RubyExceptionData.GetClrMessage(self, message), (System.Exception)null), message);
         }
         
-        #endif
         public static System.Exception/*!*/ ExceptionFactory__ArgumentError(IronRuby.Builtins.RubyClass/*!*/ self, [DefaultParameterValueAttribute(null)]object message) {
             return IronRuby.Runtime.RubyExceptionData.InitializeException(new System.ArgumentException(IronRuby.Runtime.RubyExceptionData.GetClrMessage(self, message), (System.Exception)null), message);
         }
@@ -9118,7 +9343,9 @@ namespace IronRuby.StandardLibrary.Threading {
             DefineGlobalClass("ConditionVariable", typeof(IronRuby.StandardLibrary.Threading.RubyConditionVariable), 0x00000008, classRef0, LoadConditionVariable_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
             DefineGlobalClass("Mutex", typeof(IronRuby.StandardLibrary.Threading.RubyMutex), 0x00000008, classRef0, LoadMutex_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
             IronRuby.Builtins.RubyClass def1 = DefineGlobalClass("Queue", typeof(IronRuby.StandardLibrary.Threading.RubyQueue), 0x00000008, classRef0, LoadQueue_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #if FEATURE_THREAD
             ExtendClass(typeof(System.Threading.Thread), 0x00000000, classRef0, null, LoadSystem__Threading__Thread_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
             DefineGlobalClass("SizedQueue", typeof(IronRuby.StandardLibrary.Threading.SizedQueue), 0x00000008, def1, LoadSizedQueue_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
         }
         
@@ -9279,6 +9506,7 @@ namespace IronRuby.StandardLibrary.Threading {
             
         }
         
+        #if FEATURE_THREAD
         private static void LoadSystem__Threading__Thread_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "exclusive", 0x21, 
                 0x00000002U, 
@@ -9286,6 +9514,7 @@ namespace IronRuby.StandardLibrary.Threading {
             );
             
         }
+        #endif
         
     }
 }
@@ -9301,47 +9530,47 @@ namespace IronRuby.StandardLibrary.Sockets {
             IronRuby.Builtins.RubyClass classRef1 = GetClass(typeof(System.SystemException));
             
             
-            #if !SILVERLIGHT
+            #if FEATURE_SYNC_SOCKETS
             IronRuby.Builtins.RubyClass def3 = DefineGlobalClass("BasicSocket", typeof(IronRuby.StandardLibrary.Sockets.RubyBasicSocket), 0x00000008, classRef0, LoadBasicSocket_Instance, LoadBasicSocket_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
             #endif
-            #if !SILVERLIGHT && !SILVERLIGHT
+            #if FEATURE_SYNC_SOCKETS && !SILVERLIGHT
             IronRuby.Builtins.RubyModule def2 = DefineModule("Socket::Constants", typeof(IronRuby.StandardLibrary.Sockets.RubySocket.SocketConstants), 0x00000008, null, null, LoadSocket__Constants_Constants, IronRuby.Builtins.RubyModule.EmptyArray);
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_SYNC_SOCKETS
             DefineGlobalClass("SocketError", typeof(System.Net.Sockets.SocketException), 0x00000000, classRef1, LoadSocketError_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
                 new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(IronRuby.StandardLibrary.Sockets.SocketErrorOps.Create)
             );
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_SYNC_SOCKETS
             IronRuby.Builtins.RubyClass def5 = DefineGlobalClass("IPSocket", typeof(IronRuby.StandardLibrary.Sockets.IPSocket), 0x00000008, def3, LoadIPSocket_Instance, LoadIPSocket_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_SYNC_SOCKETS
             IronRuby.Builtins.RubyClass def1 = DefineGlobalClass("Socket", typeof(IronRuby.StandardLibrary.Sockets.RubySocket), 0x00000008, def3, LoadSocket_Instance, LoadSocket_Class, LoadSocket_Constants, IronRuby.Builtins.RubyModule.EmptyArray, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Runtime.ConversionStorage<System.Int32>, IronRuby.Builtins.RubyClass, System.Object, System.Int32, System.Int32, IronRuby.StandardLibrary.Sockets.RubySocket>(IronRuby.StandardLibrary.Sockets.RubySocket.CreateSocket)
             );
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_SYNC_SOCKETS
             IronRuby.Builtins.RubyClass def4 = DefineGlobalClass("TCPSocket", typeof(IronRuby.StandardLibrary.Sockets.TCPSocket), 0x00000008, def5, LoadTCPSocket_Instance, LoadTCPSocket_Class, null, IronRuby.Builtins.RubyModule.EmptyArray, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Runtime.ConversionStorage<System.Int32>, IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Object, System.Int32, IronRuby.StandardLibrary.Sockets.TCPSocket>(IronRuby.StandardLibrary.Sockets.TCPSocket.CreateTCPSocket), 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Runtime.ConversionStorage<System.Int32>, IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Object, IronRuby.Builtins.MutableString, System.Object, IronRuby.StandardLibrary.Sockets.TCPSocket>(IronRuby.StandardLibrary.Sockets.TCPSocket.CreateTCPSocket)
             );
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_SYNC_SOCKETS
             DefineGlobalClass("UDPSocket", typeof(IronRuby.StandardLibrary.Sockets.UDPSocket), 0x00000008, def5, LoadUDPSocket_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Runtime.ConversionStorage<System.Int32>, IronRuby.Builtins.RubyClass, System.Object, IronRuby.StandardLibrary.Sockets.UDPSocket>(IronRuby.StandardLibrary.Sockets.UDPSocket.CreateUDPSocket)
             );
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_SYNC_SOCKETS
             DefineGlobalClass("TCPServer", typeof(IronRuby.StandardLibrary.Sockets.TCPServer), 0x00000008, def4, LoadTCPServer_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
                 new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Runtime.ConversionStorage<System.Int32>, IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Object, IronRuby.StandardLibrary.Sockets.TCPServer>(IronRuby.StandardLibrary.Sockets.TCPServer.CreateTCPServer)
             );
             #endif
-            #if !SILVERLIGHT && !SILVERLIGHT
+            #if FEATURE_SYNC_SOCKETS && !SILVERLIGHT
             SetConstant(def1, "Constants", def2);
             #endif
         }
         
-        #if !SILVERLIGHT
+        #if FEATURE_SYNC_SOCKETS
         private static void LoadBasicSocket_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "close_read", 0x11, 
                 0x00000000U, 
@@ -9409,7 +9638,7 @@ namespace IronRuby.StandardLibrary.Sockets {
         }
         #endif
         
-        #if !SILVERLIGHT
+        #if FEATURE_SYNC_SOCKETS
         private static void LoadBasicSocket_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "do_not_reverse_lookup", 0x21, 
                 0x00000000U, 
@@ -9426,7 +9655,7 @@ namespace IronRuby.StandardLibrary.Sockets {
         }
         #endif
         
-        #if !SILVERLIGHT
+        #if FEATURE_SYNC_SOCKETS
         private static void LoadIPSocket_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "addr", 0x11, 
                 0x00000000U, 
@@ -9446,7 +9675,7 @@ namespace IronRuby.StandardLibrary.Sockets {
         }
         #endif
         
-        #if !SILVERLIGHT
+        #if FEATURE_SYNC_SOCKETS
         private static void LoadIPSocket_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "getaddress", 0x21, 
                 0x00000000U, 
@@ -9456,14 +9685,14 @@ namespace IronRuby.StandardLibrary.Sockets {
         }
         #endif
         
-        #if !SILVERLIGHT
+        #if FEATURE_SYNC_SOCKETS
         private static void LoadSocket_Constants(IronRuby.Builtins.RubyModule/*!*/ module) {
             LoadSocket__Constants_Constants(module);
             
         }
         #endif
         
-        #if !SILVERLIGHT
+        #if FEATURE_SYNC_SOCKETS
         private static void LoadSocket_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "accept", 0x11, 
                 0x00000000U, 
@@ -9509,7 +9738,7 @@ namespace IronRuby.StandardLibrary.Sockets {
         }
         #endif
         
-        #if !SILVERLIGHT
+        #if FEATURE_SYNC_SOCKETS
         private static void LoadSocket_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "getaddrinfo", 0x21, 
                 0x00000000U, 
@@ -9572,7 +9801,7 @@ namespace IronRuby.StandardLibrary.Sockets {
         }
         #endif
         
-        #if !SILVERLIGHT && !SILVERLIGHT
+        #if FEATURE_SYNC_SOCKETS && !SILVERLIGHT
         private static void LoadSocket__Constants_Constants(IronRuby.Builtins.RubyModule/*!*/ module) {
             SetConstant(module, "AF_APPLETALK", IronRuby.StandardLibrary.Sockets.RubySocket.SocketConstants.AF_APPLETALK);
             SetConstant(module, "AF_ATM", IronRuby.StandardLibrary.Sockets.RubySocket.SocketConstants.AF_ATM);
@@ -9726,13 +9955,13 @@ namespace IronRuby.StandardLibrary.Sockets {
         }
         #endif
         
-        #if !SILVERLIGHT
+        #if FEATURE_SYNC_SOCKETS
         private static void LoadSocketError_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             module.HideMethod("message");
         }
         #endif
         
-        #if !SILVERLIGHT
+        #if FEATURE_SYNC_SOCKETS
         private static void LoadTCPServer_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "accept", 0x11, 
                 0x00000000U, 
@@ -9762,7 +9991,7 @@ namespace IronRuby.StandardLibrary.Sockets {
         }
         #endif
         
-        #if !SILVERLIGHT
+        #if FEATURE_SYNC_SOCKETS
         private static void LoadTCPSocket_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "initialize", 0x12, 
                 0x00040000U, 0x00140000U, 
@@ -9773,7 +10002,7 @@ namespace IronRuby.StandardLibrary.Sockets {
         }
         #endif
         
-        #if !SILVERLIGHT
+        #if FEATURE_SYNC_SOCKETS
         private static void LoadTCPSocket_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "gethostbyname", 0x21, 
                 0x00000000U, 
@@ -9783,7 +10012,7 @@ namespace IronRuby.StandardLibrary.Sockets {
         }
         #endif
         
-        #if !SILVERLIGHT
+        #if FEATURE_SYNC_SOCKETS
         private static void LoadUDPSocket_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "bind", 0x11, 
                 0x00000000U, 
@@ -9831,51 +10060,112 @@ namespace IronRuby.StandardLibrary.OpenSsl {
             IronRuby.Builtins.RubyClass classRef2 = GetClass(typeof(System.Runtime.InteropServices.ExternalException));
             
             
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyModule def1 = DefineGlobalModule("OpenSSL", typeof(IronRuby.StandardLibrary.OpenSsl.OpenSsl), 0x00000008, null, null, LoadOpenSSL_Constants, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyClass def2 = DefineClass("OpenSSL::BN", typeof(IronRuby.StandardLibrary.OpenSsl.OpenSsl.BN), 0x00000008, classRef0, null, LoadOpenSSL__BN_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyModule def3 = DefineModule("OpenSSL::Digest", typeof(IronRuby.StandardLibrary.OpenSsl.OpenSsl.DigestFactory), 0x00000008, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyClass def4 = DefineClass("OpenSSL::Digest::Digest", typeof(IronRuby.StandardLibrary.OpenSsl.OpenSsl.DigestFactory.Digest), 0x00000008, classRef0, LoadOpenSSL__Digest__Digest_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, IronRuby.StandardLibrary.OpenSsl.OpenSsl.DigestFactory.Digest>(IronRuby.StandardLibrary.OpenSsl.OpenSsl.DigestFactory.Digest.CreateDigest)
             );
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyClass def5 = DefineClass("OpenSSL::HMAC", typeof(IronRuby.StandardLibrary.OpenSsl.OpenSsl.HMAC), 0x00000008, classRef0, null, LoadOpenSSL__HMAC_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyClass def6 = DefineClass("OpenSSL::OpenSSLError", typeof(IronRuby.StandardLibrary.OpenSsl.OpenSsl.OpenSSLError), 0x00000008, classRef1, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyModule def7 = DefineModule("OpenSSL::PKey", typeof(IronRuby.StandardLibrary.OpenSsl.OpenSsl.PKey), 0x00000008, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyClass def8 = DefineClass("OpenSSL::PKey::RSA", typeof(IronRuby.StandardLibrary.OpenSsl.OpenSsl.PKey.RSA), 0x00000008, classRef0, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyModule def9 = DefineModule("OpenSSL::Random", typeof(IronRuby.StandardLibrary.OpenSsl.OpenSsl.RandomModule), 0x00000008, null, LoadOpenSSL__Random_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyModule def10 = DefineModule("OpenSSL::SSL", typeof(IronRuby.StandardLibrary.OpenSsl.OpenSsl.SSL), 0x00000008, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyModule def12 = DefineModule("OpenSSL::X509", typeof(IronRuby.StandardLibrary.OpenSsl.OpenSsl.X509), 0x00000008, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyClass def13 = DefineClass("OpenSSL::X509::Certificate", typeof(IronRuby.StandardLibrary.OpenSsl.OpenSsl.X509.Certificate), 0x00000008, classRef0, LoadOpenSSL__X509__Certificate_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.StandardLibrary.OpenSsl.OpenSsl.X509.Certificate>(IronRuby.StandardLibrary.OpenSsl.OpenSsl.X509.Certificate.CreateCertificate), 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, IronRuby.StandardLibrary.OpenSsl.OpenSsl.X509.Certificate>(IronRuby.StandardLibrary.OpenSsl.OpenSsl.X509.Certificate.CreateCertificate)
             );
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyClass def15 = DefineClass("OpenSSL::X509::CertificateError", typeof(System.Security.Cryptography.CryptographicException), 0x00000000, classRef2, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Security.Cryptography.CryptographicException>(IronRuby.StandardLibrary.OpenSsl.OpenSsl.X509.CryptographicExceptionOps.Create)
             );
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyClass def14 = DefineClass("OpenSSL::X509::Name", typeof(IronRuby.StandardLibrary.OpenSsl.OpenSsl.X509.Name), 0x00000008, classRef0, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyClass def11 = DefineClass("OpenSSL::SSL::SSLError", typeof(IronRuby.StandardLibrary.OpenSsl.OpenSsl.SSL.SSLError), 0x00000008, def6, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def1, "BN", def2);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def1, "Digest", def3);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def3, "Digest", def4);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def1, "HMAC", def5);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def1, "OpenSSLError", def6);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def1, "PKey", def7);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def7, "RSA", def8);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def1, "Random", def9);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def1, "SSL", def10);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def1, "X509", def12);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def12, "Certificate", def13);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def12, "CertificateError", def15);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def12, "Name", def14);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def10, "SSLError", def11);
+            #endif
         }
         
+        #if FEATURE_CRYPTOGRAPHY
         private static void LoadOpenSSL_Constants(IronRuby.Builtins.RubyModule/*!*/ module) {
             SetConstant(module, "OPENSSL_VERSION", IronRuby.StandardLibrary.OpenSsl.OpenSsl.OPENSSL_VERSION);
             SetConstant(module, "OPENSSL_VERSION_NUMBER", IronRuby.StandardLibrary.OpenSsl.OpenSsl.OPENSSL_VERSION_NUMBER);
             SetConstant(module, "VERSION", IronRuby.StandardLibrary.OpenSsl.OpenSsl.VERSION);
             
         }
+        #endif
         
+        #if FEATURE_CRYPTOGRAPHY
         private static void LoadOpenSSL__BN_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "rand", 0x21, 
                 0x00030000U, 
@@ -9883,7 +10173,9 @@ namespace IronRuby.StandardLibrary.OpenSsl {
             );
             
         }
+        #endif
         
+        #if FEATURE_CRYPTOGRAPHY
         private static void LoadOpenSSL__Digest__Digest_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "digest", 0x11, 
                 0x00000000U, 
@@ -9916,7 +10208,9 @@ namespace IronRuby.StandardLibrary.OpenSsl {
             );
             
         }
+        #endif
         
+        #if FEATURE_CRYPTOGRAPHY
         private static void LoadOpenSSL__HMAC_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "digest", 0x21, 
                 0x0000000eU, 
@@ -9929,7 +10223,9 @@ namespace IronRuby.StandardLibrary.OpenSsl {
             );
             
         }
+        #endif
         
+        #if FEATURE_CRYPTOGRAPHY
         private static void LoadOpenSSL__Random_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "pseudo_bytes", 0x21, 
                 0x00010000U, 
@@ -9947,7 +10243,9 @@ namespace IronRuby.StandardLibrary.OpenSsl {
             );
             
         }
+        #endif
         
+        #if FEATURE_CRYPTOGRAPHY
         private static void LoadOpenSSL__X509__Certificate_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "initialize", 0x12, 
                 0x00000000U, 
@@ -9990,6 +10288,7 @@ namespace IronRuby.StandardLibrary.OpenSsl {
             );
             
         }
+        #endif
         
     }
 }
@@ -10004,45 +10303,60 @@ namespace IronRuby.StandardLibrary.Digest {
             IronRuby.Builtins.RubyClass classRef0 = GetClass(typeof(System.Object));
             
             
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyModule def1 = DefineGlobalModule("Digest", typeof(IronRuby.StandardLibrary.Digest.Digest), 0x00000008, null, LoadDigest_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyModule def4 = DefineModule("Digest::Instance", typeof(IronRuby.StandardLibrary.Digest.Digest.Instance), 0x00000008, LoadDigest__Instance_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyClass def3 = DefineClass("Digest::Class", typeof(IronRuby.StandardLibrary.Digest.Digest.Class), 0x00000008, classRef0, null, LoadDigest__Class_Class, null, new IronRuby.Builtins.RubyModule[] {def4});
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             IronRuby.Builtins.RubyClass def2 = DefineClass("Digest::Base", typeof(IronRuby.StandardLibrary.Digest.Digest.Base), 0x00000008, def3, LoadDigest__Base_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
-            #if !SILVERLIGHT
+            #endif
+            #if FEATURE_CRYPTOGRAPHY && !SILVERLIGHT
             IronRuby.Builtins.RubyClass def5 = DefineClass("Digest::MD5", typeof(IronRuby.StandardLibrary.Digest.Digest.MD5), 0x00000008, def2, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_CRYPTOGRAPHY && !SILVERLIGHT
             IronRuby.Builtins.RubyClass def6 = DefineClass("Digest::SHA1", typeof(IronRuby.StandardLibrary.Digest.Digest.SHA1), 0x00000008, def2, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_CRYPTOGRAPHY && !SILVERLIGHT
             IronRuby.Builtins.RubyClass def7 = DefineClass("Digest::SHA256", typeof(IronRuby.StandardLibrary.Digest.Digest.SHA256), 0x00000008, def2, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_CRYPTOGRAPHY && !SILVERLIGHT
             IronRuby.Builtins.RubyClass def8 = DefineClass("Digest::SHA384", typeof(IronRuby.StandardLibrary.Digest.Digest.SHA384), 0x00000008, def2, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_CRYPTOGRAPHY && !SILVERLIGHT
             IronRuby.Builtins.RubyClass def9 = DefineClass("Digest::SHA512", typeof(IronRuby.StandardLibrary.Digest.Digest.SHA512), 0x00000008, def2, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
             #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def1, "Instance", def4);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def1, "Class", def3);
+            #endif
+            #if FEATURE_CRYPTOGRAPHY
             SetConstant(def1, "Base", def2);
-            #if !SILVERLIGHT
+            #endif
+            #if FEATURE_CRYPTOGRAPHY && !SILVERLIGHT
             SetConstant(def1, "MD5", def5);
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_CRYPTOGRAPHY && !SILVERLIGHT
             SetConstant(def1, "SHA1", def6);
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_CRYPTOGRAPHY && !SILVERLIGHT
             SetConstant(def1, "SHA256", def7);
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_CRYPTOGRAPHY && !SILVERLIGHT
             SetConstant(def1, "SHA384", def8);
             #endif
-            #if !SILVERLIGHT
+            #if FEATURE_CRYPTOGRAPHY && !SILVERLIGHT
             SetConstant(def1, "SHA512", def9);
             #endif
         }
         
+        #if FEATURE_CRYPTOGRAPHY
         private static void LoadDigest_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "const_missing", 0x21, 
                 0x00010002U, 
@@ -10055,7 +10369,9 @@ namespace IronRuby.StandardLibrary.Digest {
             );
             
         }
+        #endif
         
+        #if FEATURE_CRYPTOGRAPHY
         private static void LoadDigest__Base_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "<<", 0x11, 
                 0x00000000U, 
@@ -10078,7 +10394,9 @@ namespace IronRuby.StandardLibrary.Digest {
             );
             
         }
+        #endif
         
+        #if FEATURE_CRYPTOGRAPHY
         private static void LoadDigest__Class_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "digest", 0x21, 
                 0x00040008U, 0x00000000U, 
@@ -10093,7 +10411,9 @@ namespace IronRuby.StandardLibrary.Digest {
             );
             
         }
+        #endif
         
+        #if FEATURE_CRYPTOGRAPHY
         private static void LoadDigest__Instance_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "digest", 0x11, 
                 0x00000000U, 0x00080010U, 
@@ -10118,6 +10438,7 @@ namespace IronRuby.StandardLibrary.Digest {
             );
             
         }
+        #endif
         
     }
 }
@@ -10130,49 +10451,64 @@ namespace IronRuby.StandardLibrary.Zlib {
     public sealed class ZlibLibraryInitializer : IronRuby.Builtins.LibraryInitializer {
         protected override void LoadModules() {
             IronRuby.Builtins.RubyClass classRef0 = GetClass(typeof(System.SystemException));
-            IronRuby.Builtins.RubyClass classRef1 = GetClass(typeof(System.Object));
-            IronRuby.Builtins.RubyClass classRef2 = GetClass(typeof(IronRuby.Builtins.RuntimeError));
+            IronRuby.Builtins.RubyClass classRef1 = GetClass(typeof(IronRuby.Builtins.RubyObject));
             
             
             IronRuby.Builtins.RubyModule def1 = DefineGlobalModule("Zlib", typeof(IronRuby.StandardLibrary.Zlib.Zlib), 0x00000008, null, LoadZlib_Class, LoadZlib_Constants, IronRuby.Builtins.RubyModule.EmptyArray);
             IronRuby.Builtins.RubyClass def5 = DefineClass("Zlib::Error", typeof(IronRuby.StandardLibrary.Zlib.Zlib.Error), 0x00000008, classRef0, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
             new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(ZlibLibraryInitializer.ExceptionFactory__Zlib__Error));
+            #if !SILVERLIGHT && !WIN8 && !WP75
             IronRuby.Builtins.RubyClass def6 = DefineClass("Zlib::GzipFile", typeof(IronRuby.StandardLibrary.Zlib.Zlib.GZipFile), 0x00000008, classRef1, LoadZlib__GzipFile_Instance, LoadZlib__GzipFile_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
-            IronRuby.Builtins.RubyClass def7 = DefineClass("Zlib::GzipFile::Error", typeof(IronRuby.StandardLibrary.Zlib.Zlib.GZipFile.Error), 0x00000008, classRef2, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
-            IronRuby.Builtins.RubyClass def12 = DefineClass("Zlib::ZStream", typeof(IronRuby.StandardLibrary.Zlib.Zlib.ZStream), 0x00000008, classRef1, LoadZlib__ZStream_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
+            #if !SILVERLIGHT && !WIN8 && !WP75
+            IronRuby.Builtins.RubyClass def7 = DefineClass("Zlib::GzipFile::Error", typeof(IronRuby.StandardLibrary.Zlib.Zlib.GZipFile.Error), 0x00000008, classRef0, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
+            new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(ZlibLibraryInitializer.ExceptionFactory__Zlib__GzipFile__Error));
+            #endif
+            IronRuby.Builtins.RubyClass def14 = DefineClass("Zlib::ZStream", typeof(IronRuby.StandardLibrary.Zlib.Zlib.ZStream), 0x00000008, classRef1, LoadZlib__ZStream_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray);
             IronRuby.Builtins.RubyClass def2 = DefineClass("Zlib::BufError", typeof(IronRuby.StandardLibrary.Zlib.Zlib.BufError), 0x00000008, def5, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
             new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(ZlibLibraryInitializer.ExceptionFactory__Zlib__BufError));
             IronRuby.Builtins.RubyClass def3 = DefineClass("Zlib::DataError", typeof(IronRuby.StandardLibrary.Zlib.Zlib.DataError), 0x00000008, def5, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
             new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(ZlibLibraryInitializer.ExceptionFactory__Zlib__DataError));
-            #if !SILVERLIGHT
-            IronRuby.Builtins.RubyClass def4 = DefineClass("Zlib::Deflate", typeof(IronRuby.StandardLibrary.Zlib.Zlib.Deflate), 0x00000008, def12, LoadZlib__Deflate_Instance, LoadZlib__Deflate_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
-            #endif
-            IronRuby.Builtins.RubyClass def8 = DefineClass("Zlib::GzipReader", typeof(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader), 0x00000008, def6, LoadZlib__GzipReader_Instance, LoadZlib__GzipReader_Class, LoadZlib__GzipReader_Constants, IronRuby.Builtins.RubyModule.EmptyArray, 
-                new Func<IronRuby.Runtime.RespondToStorage, IronRuby.Builtins.RubyClass, System.Object, IronRuby.StandardLibrary.Zlib.Zlib.GZipReader>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Create)
+            IronRuby.Builtins.RubyClass def4 = DefineClass("Zlib::Deflate", typeof(IronRuby.StandardLibrary.Zlib.Zlib.Deflate), 0x00000008, def14, LoadZlib__Deflate_Instance, LoadZlib__Deflate_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #if !SILVERLIGHT && !WIN8 && !WP75
+            IronRuby.Builtins.RubyClass def8 = DefineClass("Zlib::GzipReader", typeof(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader), 0x00000008, def6, LoadZlib__GzipReader_Instance, LoadZlib__GzipReader_Class, null, IronRuby.Builtins.RubyModule.EmptyArray, 
+                new Func<IronRuby.Builtins.RubyClass, System.Object, System.Collections.IDictionary, IronRuby.StandardLibrary.Zlib.Zlib.GZipReader>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Create), 
+                new Func<IronRuby.Builtins.RubyClass, System.Object, IronRuby.StandardLibrary.Zlib.Zlib.GZipReader>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Create)
             );
-            #if !SILVERLIGHT
+            #endif
+            #if !SILVERLIGHT && !WIN8 && !WP75
             IronRuby.Builtins.RubyClass def9 = DefineClass("Zlib::GzipWriter", typeof(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter), 0x00000008, def6, LoadZlib__GzipWriter_Instance, LoadZlib__GzipWriter_Class, null, IronRuby.Builtins.RubyModule.EmptyArray, 
-                new Func<IronRuby.Runtime.RespondToStorage, IronRuby.Builtins.RubyClass, System.Object, System.Int32, System.Int32, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Create)
+                new Func<IronRuby.Builtins.RubyClass, System.Object, System.Int32, System.Int32, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Create)
             );
             #endif
-            IronRuby.Builtins.RubyClass def10 = DefineClass("Zlib::Inflate", typeof(IronRuby.StandardLibrary.Zlib.Zlib.Inflate), 0x00000008, def12, LoadZlib__Inflate_Instance, LoadZlib__Inflate_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
-            IronRuby.Builtins.RubyClass def11 = DefineClass("Zlib::StreamError", typeof(IronRuby.StandardLibrary.Zlib.Zlib.StreamError), 0x00000008, def5, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
+            IronRuby.Builtins.RubyClass def10 = DefineClass("Zlib::Inflate", typeof(IronRuby.StandardLibrary.Zlib.Zlib.Inflate), 0x00000008, def14, LoadZlib__Inflate_Instance, LoadZlib__Inflate_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            IronRuby.Builtins.RubyClass def11 = DefineClass("Zlib::MemError", typeof(IronRuby.StandardLibrary.Zlib.Zlib.MemError), 0x00000008, def5, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
+            new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(ZlibLibraryInitializer.ExceptionFactory__Zlib__MemError));
+            IronRuby.Builtins.RubyClass def12 = DefineClass("Zlib::NeedDict", typeof(IronRuby.StandardLibrary.Zlib.Zlib.NeedDict), 0x00000008, def5, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
+            new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(ZlibLibraryInitializer.ExceptionFactory__Zlib__NeedDict));
+            IronRuby.Builtins.RubyClass def13 = DefineClass("Zlib::StreamError", typeof(IronRuby.StandardLibrary.Zlib.Zlib.StreamError), 0x00000008, def5, null, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
             new Func<IronRuby.Builtins.RubyClass, System.Object, System.Exception>(ZlibLibraryInitializer.ExceptionFactory__Zlib__StreamError));
             SetConstant(def1, "Error", def5);
+            #if !SILVERLIGHT && !WIN8 && !WP75
             SetConstant(def1, "GzipFile", def6);
+            #endif
+            #if !SILVERLIGHT && !WIN8 && !WP75
             SetConstant(def6, "Error", def7);
-            SetConstant(def1, "ZStream", def12);
+            #endif
+            SetConstant(def1, "ZStream", def14);
             SetConstant(def1, "BufError", def2);
             SetConstant(def1, "DataError", def3);
-            #if !SILVERLIGHT
             SetConstant(def1, "Deflate", def4);
-            #endif
+            #if !SILVERLIGHT && !WIN8 && !WP75
             SetConstant(def1, "GzipReader", def8);
-            #if !SILVERLIGHT
+            #endif
+            #if !SILVERLIGHT && !WIN8 && !WP75
             SetConstant(def1, "GzipWriter", def9);
             #endif
             SetConstant(def1, "Inflate", def10);
-            SetConstant(def1, "StreamError", def11);
+            SetConstant(def1, "MemError", def11);
+            SetConstant(def1, "NeedDict", def12);
+            SetConstant(def1, "StreamError", def13);
         }
         
         private static void LoadZlib_Constants(IronRuby.Builtins.RubyModule/*!*/ module) {
@@ -10180,60 +10516,85 @@ namespace IronRuby.StandardLibrary.Zlib {
             SetConstant(module, "BEST_COMPRESSION", IronRuby.StandardLibrary.Zlib.Zlib.BEST_COMPRESSION);
             SetConstant(module, "BEST_SPEED", IronRuby.StandardLibrary.Zlib.Zlib.BEST_SPEED);
             SetConstant(module, "BINARY", IronRuby.StandardLibrary.Zlib.Zlib.BINARY);
+            SetConstant(module, "DEF_MEM_LEVEL", IronRuby.StandardLibrary.Zlib.Zlib.DEF_MEM_LEVEL);
             SetConstant(module, "DEFAULT_COMPRESSION", IronRuby.StandardLibrary.Zlib.Zlib.DEFAULT_COMPRESSION);
             SetConstant(module, "DEFAULT_STRATEGY", IronRuby.StandardLibrary.Zlib.Zlib.DEFAULT_STRATEGY);
             SetConstant(module, "FILTERED", IronRuby.StandardLibrary.Zlib.Zlib.FILTERED);
             SetConstant(module, "FINISH", IronRuby.StandardLibrary.Zlib.Zlib.FINISH);
-            SetConstant(module, "FIXLCODES", IronRuby.StandardLibrary.Zlib.Zlib.FIXLCODES);
             SetConstant(module, "FULL_FLUSH", IronRuby.StandardLibrary.Zlib.Zlib.FULL_FLUSH);
             SetConstant(module, "HUFFMAN_ONLY", IronRuby.StandardLibrary.Zlib.Zlib.HUFFMAN_ONLY);
             SetConstant(module, "MAX_WBITS", IronRuby.StandardLibrary.Zlib.Zlib.MAX_WBITS);
-            SetConstant(module, "MAXBITS", IronRuby.StandardLibrary.Zlib.Zlib.MAXBITS);
-            SetConstant(module, "MAXCODES", IronRuby.StandardLibrary.Zlib.Zlib.MAXCODES);
-            SetConstant(module, "MAXDCODES", IronRuby.StandardLibrary.Zlib.Zlib.MAXDCODES);
-            SetConstant(module, "MAXLCODES", IronRuby.StandardLibrary.Zlib.Zlib.MAXLCODES);
             SetConstant(module, "NO_COMPRESSION", IronRuby.StandardLibrary.Zlib.Zlib.NO_COMPRESSION);
             SetConstant(module, "NO_FLUSH", IronRuby.StandardLibrary.Zlib.Zlib.NO_FLUSH);
             SetConstant(module, "SYNC_FLUSH", IronRuby.StandardLibrary.Zlib.Zlib.SYNC_FLUSH);
             SetConstant(module, "UNKNOWN", IronRuby.StandardLibrary.Zlib.Zlib.UNKNOWN);
             SetConstant(module, "VERSION", IronRuby.StandardLibrary.Zlib.Zlib.VERSION);
-            SetConstant(module, "Z_DEFLATED", IronRuby.StandardLibrary.Zlib.Zlib.Z_DEFLATED);
             SetConstant(module, "ZLIB_VERSION", IronRuby.StandardLibrary.Zlib.Zlib.ZLIB_VERSION);
             
         }
         
         private static void LoadZlib_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
-            #if !SILVERLIGHT
+            DefineLibraryMethod(module, "adler32", 0x21, 
+                0x00000000U, 
+                new Func<IronRuby.Builtins.RubyModule, IronRuby.Builtins.MutableString, System.Int32, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.Adler32)
+            );
+            
+            DefineLibraryMethod(module, "crc_table", 0x21, 
+                0x00000000U, 
+                new Func<IronRuby.Builtins.RubyModule, IronRuby.Builtins.RubyArray>(IronRuby.StandardLibrary.Zlib.Zlib.GetCrcTable)
+            );
+            
             DefineLibraryMethod(module, "crc32", 0x21, 
                 0x00000000U, 0x00010000U, 
                 new Func<IronRuby.Builtins.RubyModule, System.Int32>(IronRuby.StandardLibrary.Zlib.Zlib.GetCrc), 
                 new Func<IronRuby.Builtins.RubyModule, IronRuby.Builtins.MutableString, System.Int32, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.GetCrc)
             );
             
-            #endif
         }
         
-        #if !SILVERLIGHT
         private static void LoadZlib__Deflate_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
+            DefineLibraryMethod(module, "<<", 0x11, 
+                0x00010000U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.Deflate, IronRuby.Builtins.MutableString, IronRuby.StandardLibrary.Zlib.Zlib.Deflate>(IronRuby.StandardLibrary.Zlib.Zlib.Deflate.AppendData)
+            );
+            
             DefineLibraryMethod(module, "deflate", 0x11, 
-                0x00010002U, 
-                new Func<IronRuby.StandardLibrary.Zlib.Zlib.Deflate, IronRuby.Builtins.MutableString, System.Int32, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.Deflate.DeflateString)
+                0x00010000U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.Deflate, IronRuby.Builtins.MutableString, System.Int32, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.Deflate.Compress)
+            );
+            
+            DefineLibraryMethod(module, "flush", 0x11, 
+                0x00000000U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.Deflate, System.Int32, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.Deflate.Flush)
+            );
+            
+            DefineLibraryMethod(module, "params", 0x11, 
+                0x00000000U, 
+                new Action<IronRuby.StandardLibrary.Zlib.Zlib.Deflate, System.Int32, System.Int32>(IronRuby.StandardLibrary.Zlib.Zlib.Deflate.SetParams)
+            );
+            
+            DefineLibraryMethod(module, "set_dictionary", 0x11, 
+                0x00000002U, 
+                new Action<IronRuby.StandardLibrary.Zlib.Zlib.Deflate, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.Deflate.SetParams)
             );
             
         }
-        #endif
         
-        #if !SILVERLIGHT
         private static void LoadZlib__Deflate_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "deflate", 0x21, 
                 0x00010002U, 
-                new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.Deflate.DeflateString)
+                new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Int32, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.Deflate.DeflateString)
             );
             
         }
-        #endif
         
+        #if !SILVERLIGHT && !WIN8 && !WP75
         private static void LoadZlib__GzipFile_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
+            DefineLibraryMethod(module, "close", 0x11, 
+                0x00000000U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GZipFile, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.GZipFile.Close)
+            );
+            
             DefineLibraryMethod(module, "closed?", 0x11, 
                 0x00000000U, 
                 new Func<IronRuby.StandardLibrary.Zlib.Zlib.GZipFile, System.Boolean>(IronRuby.StandardLibrary.Zlib.Zlib.GZipFile.IsClosed)
@@ -10242,6 +10603,11 @@ namespace IronRuby.StandardLibrary.Zlib {
             DefineLibraryMethod(module, "comment", 0x11, 
                 0x00000000U, 
                 new Func<IronRuby.StandardLibrary.Zlib.Zlib.GZipFile, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.GZipFile.Comment)
+            );
+            
+            DefineLibraryMethod(module, "finish", 0x11, 
+                0x00000000U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GZipFile, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.GZipFile.Finish)
             );
             
             DefineLibraryMethod(module, "orig_name", 0x11, 
@@ -10255,118 +10621,118 @@ namespace IronRuby.StandardLibrary.Zlib {
             );
             
         }
+        #endif
         
+        #if !SILVERLIGHT && !WIN8 && !WP75
         private static void LoadZlib__GzipFile_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "wrap", 0x21, 
                 0x00000000U, 
-                new Func<IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.BlockParam, IronRuby.Builtins.RubyClass, System.Object, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.GZipFile.Wrap)
-            );
-            
-        }
-        
-        private static void LoadZlib__GzipReader_Constants(IronRuby.Builtins.RubyModule/*!*/ module) {
-            SetConstant(module, "OSES", IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.OSES);
-            
-        }
-        
-        private static void LoadZlib__GzipReader_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
-            DefineLibraryMethod(module, "close", 0x11, 
-                0x00000000U, 
-                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.RubyContext, IronRuby.StandardLibrary.Zlib.Zlib.GZipReader, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Close)
-            );
-            
-            DefineLibraryMethod(module, "finish", 0x11, 
-                0x00000000U, 
-                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.RubyContext, IronRuby.StandardLibrary.Zlib.Zlib.GZipReader, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Finish)
-            );
-            
-            DefineLibraryMethod(module, "open", 0x12, 
-                0x00000000U, 
-                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GZipReader, IronRuby.StandardLibrary.Zlib.Zlib.GZipReader>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Open)
-            );
-            
-            DefineLibraryMethod(module, "read", 0x11, 
-                0x00000000U, 
-                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GZipReader, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Read)
-            );
-            
-            DefineLibraryMethod(module, "xtra_field", 0x11, 
-                0x00000000U, 
-                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GZipReader, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.ExtraField)
-            );
-            
-        }
-        
-        private static void LoadZlib__GzipReader_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
-            DefineLibraryMethod(module, "open", 0x21, 
-                0x00020004U, 0x0004000aU, 
-                new Func<IronRuby.Runtime.RespondToStorage, IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, IronRuby.StandardLibrary.Zlib.Zlib.GZipReader>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Open), 
-                new Func<IronRuby.Runtime.RespondToStorage, IronRuby.Runtime.BlockParam, IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Open)
-            );
-            
-        }
-        
-        #if !SILVERLIGHT
-        private static void LoadZlib__GzipWriter_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
-            DefineLibraryMethod(module, "<<", 0x11, 
-                0x00040008U, 
-                new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Runtime.RubyContext, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter, IronRuby.Builtins.MutableString, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Output)
-            );
-            
-            DefineLibraryMethod(module, "close", 0x11, 
-                0x00000000U, 
-                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.RubyContext, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Close)
-            );
-            
-            DefineLibraryMethod(module, "comment=", 0x11, 
-                0x00000002U, 
-                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Comment)
-            );
-            
-            DefineLibraryMethod(module, "finish", 0x11, 
-                0x00000000U, 
-                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.RubyContext, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Finish)
-            );
-            
-            DefineLibraryMethod(module, "flush", 0x11, 
-                0x00000000U, 0x00000000U, 
-                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.RubyContext, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter, System.Object, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Flush), 
-                new Func<IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.RubyContext, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter, System.Int32, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Flush)
-            );
-            
-            DefineLibraryMethod(module, "orig_name=", 0x11, 
-                0x00000002U, 
-                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.OriginalName)
-            );
-            
-            DefineLibraryMethod(module, "write", 0x11, 
-                0x00040008U, 
-                new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.Runtime.RubyContext, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter, IronRuby.Builtins.MutableString, System.Int32>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Write)
+                new Func<IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.BlockParam, IronRuby.Builtins.RubyClass, System.Object, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.GZipFile.Wrap)
             );
             
         }
         #endif
         
-        #if !SILVERLIGHT
+        #if !SILVERLIGHT && !WIN8 && !WP75
+        private static void LoadZlib__GzipReader_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
+            DefineLibraryMethod(module, "eof", 0x11, 
+                0x00000000U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GZipReader, System.Boolean>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Eof)
+            );
+            
+            DefineLibraryMethod(module, "eof?", 0x11, 
+                0x00000000U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GZipReader, System.Boolean>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Eof)
+            );
+            
+            DefineLibraryMethod(module, "pos", 0x11, 
+                0x00000000U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GZipReader, System.Int64>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Pos)
+            );
+            
+            DefineLibraryMethod(module, "read", 0x11, 
+                0x00010000U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GZipReader, System.Nullable<System.Int32>, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Read)
+            );
+            
+            DefineLibraryMethod(module, "tell", 0x11, 
+                0x00000000U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GZipReader, System.Int64>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Pos)
+            );
+            
+        }
+        #endif
+        
+        #if !SILVERLIGHT && !WIN8 && !WP75
+        private static void LoadZlib__GzipReader_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
+            DefineLibraryMethod(module, "open", 0x21, 
+                0x00020004U, 
+                new Func<IronRuby.Runtime.BlockParam, IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.GZipReader.Open)
+            );
+            
+        }
+        #endif
+        
+        #if !SILVERLIGHT && !WIN8 && !WP75
+        private static void LoadZlib__GzipWriter_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
+            DefineLibraryMethod(module, "<<", 0x11, 
+                0x00000000U, 
+                new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter, System.Object, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Output)
+            );
+            
+            DefineLibraryMethod(module, "flush", 0x11, 
+                0x00000000U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter, System.Int32, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Flush)
+            );
+            
+            DefineLibraryMethod(module, "pos", 0x11, 
+                0x00000000U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter, System.Int64>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Pos)
+            );
+            
+            DefineLibraryMethod(module, "tell", 0x11, 
+                0x00000000U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter, System.Int64>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Pos)
+            );
+            
+            DefineLibraryMethod(module, "write", 0x11, 
+                0x00000000U, 0x00000002U, 
+                new Func<IronRuby.Runtime.ConversionStorage<IronRuby.Builtins.MutableString>, IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter, System.Object, System.Int32>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Write), 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter, IronRuby.Builtins.MutableString, System.Int32>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Write)
+            );
+            
+        }
+        #endif
+        
+        #if !SILVERLIGHT && !WIN8 && !WP75
         private static void LoadZlib__GzipWriter_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "open", 0x21, 
-                0x00000010U, 0x00000010U, 
-                new Func<IronRuby.Runtime.RespondToStorage, IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.BlockParam, IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Int32, System.Int32, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Open), 
-                new Func<IronRuby.Runtime.RespondToStorage, IronRuby.Runtime.UnaryOpStorage, IronRuby.Runtime.BlockParam, IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Object, System.Object, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Open)
+                0x00020004U, 
+                new Func<IronRuby.Runtime.BlockParam, IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, System.Int32, System.Int32, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.GzipWriter.Open)
             );
             
         }
         #endif
         
         private static void LoadZlib__Inflate_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
-            DefineLibraryMethod(module, "close", 0x11, 
+            DefineLibraryMethod(module, "<<", 0x11, 
+                0x00010000U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.Inflate, IronRuby.Builtins.MutableString, IronRuby.StandardLibrary.Zlib.Zlib.Inflate>(IronRuby.StandardLibrary.Zlib.Zlib.Inflate.AppendData)
+            );
+            
+            DefineLibraryMethod(module, "flush", 0x11, 
                 0x00000000U, 
-                new Func<IronRuby.StandardLibrary.Zlib.Zlib.Inflate, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.Inflate.Close)
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.Inflate, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.Inflate.Flush)
             );
             
             DefineLibraryMethod(module, "inflate", 0x11, 
-                0x00010002U, 
+                0x00010000U, 
                 new Func<IronRuby.StandardLibrary.Zlib.Zlib.Inflate, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.Inflate.InflateString)
+            );
+            
+            DefineLibraryMethod(module, "set_dictionary", 0x11, 
+                0x00000002U, 
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.Inflate, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.Inflate.SetDictionary)
             );
             
         }
@@ -10382,7 +10748,7 @@ namespace IronRuby.StandardLibrary.Zlib {
         private static void LoadZlib__ZStream_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineLibraryMethod(module, "adler", 0x11, 
                 0x00000000U, 
-                new Func<IronRuby.StandardLibrary.Zlib.Zlib.ZStream, System.Int32>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.Adler)
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.ZStream, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.Adler)
             );
             
             DefineLibraryMethod(module, "avail_in", 0x11, 
@@ -10402,7 +10768,7 @@ namespace IronRuby.StandardLibrary.Zlib {
             
             DefineLibraryMethod(module, "close", 0x11, 
                 0x00000000U, 
-                new Func<IronRuby.StandardLibrary.Zlib.Zlib.ZStream, System.Boolean>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.Close)
+                new Action<IronRuby.StandardLibrary.Zlib.Zlib.ZStream>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.Close)
             );
             
             DefineLibraryMethod(module, "closed?", 0x11, 
@@ -10412,12 +10778,12 @@ namespace IronRuby.StandardLibrary.Zlib {
             
             DefineLibraryMethod(module, "data_type", 0x11, 
                 0x00000000U, 
-                new Action<IronRuby.StandardLibrary.Zlib.Zlib.ZStream>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.DataType)
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.ZStream, System.Int32>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.DataType)
             );
             
             DefineLibraryMethod(module, "finish", 0x11, 
                 0x00000000U, 
-                new Func<IronRuby.StandardLibrary.Zlib.Zlib.ZStream, System.Boolean>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.Close)
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.ZStream, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.Finish)
             );
             
             DefineLibraryMethod(module, "finished?", 0x11, 
@@ -10427,12 +10793,12 @@ namespace IronRuby.StandardLibrary.Zlib {
             
             DefineLibraryMethod(module, "flush_next_in", 0x11, 
                 0x00000000U, 
-                new Func<IronRuby.StandardLibrary.Zlib.Zlib.ZStream, System.Collections.Generic.List<System.Byte>>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.FlushNextIn)
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.ZStream, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.FlushNextIn)
             );
             
             DefineLibraryMethod(module, "flush_next_out", 0x11, 
                 0x00000000U, 
-                new Func<IronRuby.StandardLibrary.Zlib.Zlib.ZStream, System.Collections.Generic.List<System.Byte>>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.FlushNextOut)
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.ZStream, IronRuby.Builtins.MutableString>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.FlushNextOut)
             );
             
             DefineLibraryMethod(module, "reset", 0x11, 
@@ -10447,12 +10813,12 @@ namespace IronRuby.StandardLibrary.Zlib {
             
             DefineLibraryMethod(module, "total_in", 0x11, 
                 0x00000000U, 
-                new Func<IronRuby.StandardLibrary.Zlib.Zlib.ZStream, System.Int32>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.TotalIn)
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.ZStream, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.TotalIn)
             );
             
             DefineLibraryMethod(module, "total_out", 0x11, 
                 0x00000000U, 
-                new Func<IronRuby.StandardLibrary.Zlib.Zlib.ZStream, System.Int32>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.TotalOut)
+                new Func<IronRuby.StandardLibrary.Zlib.Zlib.ZStream, System.Object>(IronRuby.StandardLibrary.Zlib.Zlib.ZStream.TotalOut)
             );
             
         }
@@ -10467,6 +10833,20 @@ namespace IronRuby.StandardLibrary.Zlib {
         
         public static System.Exception/*!*/ ExceptionFactory__Zlib__Error(IronRuby.Builtins.RubyClass/*!*/ self, [DefaultParameterValueAttribute(null)]object message) {
             return IronRuby.Runtime.RubyExceptionData.InitializeException(new IronRuby.StandardLibrary.Zlib.Zlib.Error(IronRuby.Runtime.RubyExceptionData.GetClrMessage(self, message), (System.Exception)null), message);
+        }
+        
+        #if !SILVERLIGHT && !WIN8 && !WP75
+        public static System.Exception/*!*/ ExceptionFactory__Zlib__GzipFile__Error(IronRuby.Builtins.RubyClass/*!*/ self, [DefaultParameterValueAttribute(null)]object message) {
+            return IronRuby.Runtime.RubyExceptionData.InitializeException(new IronRuby.StandardLibrary.Zlib.Zlib.GZipFile.Error(IronRuby.Runtime.RubyExceptionData.GetClrMessage(self, message), (System.Exception)null), message);
+        }
+        
+        #endif
+        public static System.Exception/*!*/ ExceptionFactory__Zlib__MemError(IronRuby.Builtins.RubyClass/*!*/ self, [DefaultParameterValueAttribute(null)]object message) {
+            return IronRuby.Runtime.RubyExceptionData.InitializeException(new IronRuby.StandardLibrary.Zlib.Zlib.MemError(IronRuby.Runtime.RubyExceptionData.GetClrMessage(self, message), (System.Exception)null), message);
+        }
+        
+        public static System.Exception/*!*/ ExceptionFactory__Zlib__NeedDict(IronRuby.Builtins.RubyClass/*!*/ self, [DefaultParameterValueAttribute(null)]object message) {
+            return IronRuby.Runtime.RubyExceptionData.InitializeException(new IronRuby.StandardLibrary.Zlib.Zlib.NeedDict(IronRuby.Runtime.RubyExceptionData.GetClrMessage(self, message), (System.Exception)null), message);
         }
         
         public static System.Exception/*!*/ ExceptionFactory__Zlib__StreamError(IronRuby.Builtins.RubyClass/*!*/ self, [DefaultParameterValueAttribute(null)]object message) {
@@ -11231,12 +11611,12 @@ namespace IronRuby.StandardLibrary.BigDecimal {
             );
             
             DefineLibraryMethod(module, "<=>", 0x11, 
-                new[] { 0x00000000U, 0x00000002U, 0x00000004U, 0x00000000U, 0x00000000U}, 
-                new Func<IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.BinaryOpStorage, IronRuby.StandardLibrary.BigDecimal.BigDecimal, System.Object, System.Object>(IronRuby.StandardLibrary.BigDecimal.BigDecimalOps.Compare), 
+                new[] { 0x00000002U, 0x00000004U, 0x00000000U, 0x00000000U, 0x00000000U}, 
                 new Func<IronRuby.StandardLibrary.BigDecimal.BigDecimal, IronRuby.StandardLibrary.BigDecimal.BigDecimal, System.Object>(IronRuby.StandardLibrary.BigDecimal.BigDecimalOps.Compare), 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.StandardLibrary.BigDecimal.BigDecimal, Microsoft.Scripting.Math.BigInteger, System.Object>(IronRuby.StandardLibrary.BigDecimal.BigDecimalOps.Compare), 
                 new Func<IronRuby.Runtime.RubyContext, IronRuby.StandardLibrary.BigDecimal.BigDecimal, System.Int32, System.Object>(IronRuby.StandardLibrary.BigDecimal.BigDecimalOps.Compare), 
-                new Func<IronRuby.Runtime.RubyContext, IronRuby.StandardLibrary.BigDecimal.BigDecimal, System.Double, System.Object>(IronRuby.StandardLibrary.BigDecimal.BigDecimalOps.Compare)
+                new Func<IronRuby.Runtime.RubyContext, IronRuby.StandardLibrary.BigDecimal.BigDecimal, System.Double, System.Object>(IronRuby.StandardLibrary.BigDecimal.BigDecimalOps.Compare), 
+                new Func<IronRuby.Runtime.BinaryOpStorage, IronRuby.Runtime.BinaryOpStorage, IronRuby.StandardLibrary.BigDecimal.BigDecimal, System.Object, System.Object>(IronRuby.StandardLibrary.BigDecimal.BigDecimalOps.Compare)
             );
             
             DefineLibraryMethod(module, "==", 0x11, 
@@ -11689,18 +12069,20 @@ namespace IronRuby.StandardLibrary.Open3 {
         protected override void LoadModules() {
             
             
+            #if FEATURE_PROCESS
             DefineGlobalModule("Open3", typeof(IronRuby.StandardLibrary.Open3.Open3), 0x00000008, null, LoadOpen3_Class, null, IronRuby.Builtins.RubyModule.EmptyArray);
+            #endif
         }
         
+        #if FEATURE_PROCESS
         private static void LoadOpen3_Class(IronRuby.Builtins.RubyModule/*!*/ module) {
-            #if !SILVERLIGHT
             DefineLibraryMethod(module, "popen3", 0x21, 
                 0x00020004U, 
                 new Func<IronRuby.Runtime.RubyContext, System.Object, IronRuby.Builtins.MutableString, IronRuby.Builtins.RubyArray>(IronRuby.StandardLibrary.Open3.Open3.OpenPipe)
             );
             
-            #endif
         }
+        #endif
         
     }
 }
@@ -11715,7 +12097,7 @@ namespace IronRuby.StandardLibrary.Win32API {
             IronRuby.Builtins.RubyClass classRef0 = GetClass(typeof(IronRuby.Builtins.RubyObject));
             
             
-            #if !SILVERLIGHT
+            #if !SILVERLIGHT && !WIN8 && !ANDROID && !WP75
             DefineGlobalClass("Win32API", typeof(IronRuby.StandardLibrary.Win32API.Win32API), 0x00000008, classRef0, LoadWin32API_Instance, null, null, IronRuby.Builtins.RubyModule.EmptyArray, 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, IronRuby.StandardLibrary.Win32API.Win32API>(IronRuby.StandardLibrary.Win32API.Win32API.Create), 
                 new Func<IronRuby.Builtins.RubyClass, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, IronRuby.Builtins.MutableString, IronRuby.Builtins.RubySymbol, IronRuby.StandardLibrary.Win32API.Win32API>(IronRuby.StandardLibrary.Win32API.Win32API.Create), 
@@ -11724,7 +12106,7 @@ namespace IronRuby.StandardLibrary.Win32API {
             #endif
         }
         
-        #if !SILVERLIGHT
+        #if !SILVERLIGHT && !WIN8 && !ANDROID && !WP75
         private static void LoadWin32API_Instance(IronRuby.Builtins.RubyModule/*!*/ module) {
             DefineRuleGenerator(module, "call", 0x11, IronRuby.StandardLibrary.Win32API.Win32API.Call());
             

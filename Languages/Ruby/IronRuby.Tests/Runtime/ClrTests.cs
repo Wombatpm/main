@@ -17,8 +17,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using IronRuby.Builtins;
@@ -27,6 +29,8 @@ using Microsoft.Scripting.Hosting;
 using Microsoft.Scripting.Math;
 using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
+using Microsoft.Scripting.Actions;
+
 #if !CLR2
 using BigInt = System.Numerics.BigInteger;
 #endif
@@ -38,7 +42,6 @@ namespace IronRuby.Tests {
 
         #region Members: Fields, Methods, Properties, Indexers
 
-#pragma warning disable 169 // private field not used
         public class ClassWithFields {
             public int Field = 1;
             public readonly int RoField = 2;
@@ -46,7 +49,6 @@ namespace IronRuby.Tests {
             public static int StaticField = 3;
             public const int ConstField = 4;
         }
-#pragma warning restore 169
 
         public void ClrFields1() {
             Context.DefineGlobalVariable("obj", new ClassWithFields());
@@ -80,6 +82,28 @@ NoMethodError
 4
 30
 NoMethodError
+");
+        }
+
+        public class ClassWithField1 {
+            public int F = 1;
+        }
+
+        public class ClassWithField2 : ClassWithField1 {
+            public new static int F = 2;
+        }
+
+        public void ClrFields2() {
+            Context.DefineGlobalVariable("obj", new ClassWithField2());
+
+            AssertOutput(delegate() {
+                CompilerTest(@"
+puts $obj.class.F
+puts $obj.F
+");
+            }, @"
+2
+1
 ");
         }
 
@@ -372,6 +396,26 @@ Baz(I): 1
 10
 ");
         }
+
+        public delegate void TestDelegate(string a);
+
+#if !WIN8
+        public void SpecialMethods() {
+            var result = Engine.Execute(@"
+System::AppDomain.CurrentDomain.CreateInstance(""mscorlib"", ""System.Object"")
+");
+            Assert(result is System.Runtime.Remoting.ObjectHandle);
+
+            var dm = (DynamicMethod)Engine.Execute(@"
+System::Reflection::Emit::DynamicMethod.new(""foo"", 1.GetType(), System::Array[System::Type].new(0))
+");
+            Assert(dm.ReturnType == typeof(int));
+
+            var invoke = typeof(TestDelegate).GetMethod("Invoke");
+            var d = invoke.CreateDelegate(typeof(Action<string>));
+            Assert(d is Action<string>);
+        }
+#endif
 
         #endregion
 
@@ -710,7 +754,9 @@ p I.Mixed(1)
         #region Extension Methods
 
         public void ClrExtensionMethods0() {
-            bool expectExact = typeof(Enumerable).Assembly.FullName == "System.Core, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089";
+            Assembly systemCore = typeof(System.Linq.Enumerable).GetTypeInfo().Assembly;
+
+            bool expectExact = systemCore.FullName == "System.Core, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089";
 
             Dictionary<string, int> expected = new Dictionary<string, int>();
             foreach (string name in new[] {
@@ -755,8 +801,8 @@ p I.Mixed(1)
                 expected[name] = count + 1;
             }
 
-            var methods = ReflectionUtils.GetVisibleExtensionMethods(typeof(Enumerable).Assembly);
-            new List<MethodInfo>(ReflectionUtils.GetVisibleExtensionMethodsSlow(typeof(Enumerable).Assembly));
+            var methods = ReflectionUtils.GetVisibleExtensionMethods(systemCore);
+            new List<MethodInfo>(ReflectionUtils.GetVisibleExtensionMethodsSlow(systemCore));
 
             Dictionary<string, int> actual = new Dictionary<string, int>();
             foreach (MethodInfo method in methods) {
@@ -774,7 +820,7 @@ p I.Mixed(1)
         }
 
         public void ClrExtensionMethods1() {
-            Context.ObjectClass.SetConstant("SystemCoreAssembly", typeof(Expression).Assembly.FullName);
+            Context.ObjectClass.SetConstant("SystemCoreAssembly", typeof(Expression).GetTypeInfo().Assembly.FullName);
             TestOutput(@"
 load_assembly SystemCoreAssembly
 using_clr_extensions System::Linq
@@ -791,8 +837,8 @@ p a.first_or_default
         /// Loads an assembly that defines more extension methods in the given namespace.
         /// </summary>
         public void ClrExtensionMethods2() {
-            Context.ObjectClass.SetConstant("SystemCoreAssembly", typeof(Expression).Assembly.FullName);
-            Context.ObjectClass.SetConstant("DummyLinqAssembly", typeof(System.Linq.Dummy).Assembly.FullName);
+            Context.ObjectClass.SetConstant("SystemCoreAssembly", typeof(Expression).GetTypeInfo().Assembly.FullName);
+            Context.ObjectClass.SetConstant("DummyLinqAssembly", typeof(System.Linq.Dummy).GetTypeInfo().Assembly.FullName);
             TestOutput(@"
 load_assembly DummyLinqAssembly
 
@@ -809,13 +855,10 @@ p System::Array[Fixnum].new([1,2,3]).first_or_default
         /// Extension methods not available by default onlty after their declaring namespace is "used".
         /// </summary>
         public void ClrExtensionMethods3() {
-            Context.ObjectClass.SetConstant("SystemCoreAssembly", typeof(Expression).Assembly.FullName);
-            Context.ObjectClass.SetConstant("DummyLinqAssembly", typeof(System.Linq.Dummy).Assembly.FullName);
+            Runtime.LoadAssembly(typeof(Expression).GetTypeInfo().Assembly);
+            Runtime.LoadAssembly(typeof(System.Linq.Dummy).GetTypeInfo().Assembly);
             
             TestOutput(@"
-load_assembly DummyLinqAssembly
-load_assembly SystemCoreAssembly
-
 a = System::Array[Fixnum].new([1,2,3])
 a.first_or_default rescue p $!
 
@@ -831,7 +874,7 @@ p a.first_or_default
         /// Extension methods defined using generic parameters and constraints.
         /// </summary>
         public void ClrExtensionMethods4() {
-            Runtime.LoadAssembly(typeof(IronRubyTests.ExtensionMethods2.EMs).Assembly);
+            Runtime.LoadAssembly(typeof(IronRubyTests.ExtensionMethods2.EMs).GetTypeInfo().Assembly);
 
             TestOutput(@"
 L = System::Collections::Generic::List
@@ -1219,7 +1262,7 @@ f4
         }
 
         public void ClrOverloadInheritance_ExtensionMethods1() {
-            Runtime.LoadAssembly(Assembly.GetExecutingAssembly());
+            Runtime.LoadAssembly(typeof(OverloadInheritance2).GetTypeInfo().Assembly);
             OverloadInheritance2.Load(Context);
 
             TestOutput(@"
@@ -1255,7 +1298,7 @@ e6
         }
 
         public void ClrOverloadInheritance_ExtensionMethods2() {
-            Runtime.LoadAssembly(Assembly.GetExecutingAssembly());
+            Runtime.LoadAssembly(typeof(OverloadInheritance2).GetTypeInfo().Assembly);
             OverloadInheritance2.Load(Context);
 
             TestOutput(@"
@@ -1692,6 +1735,8 @@ puts($obj2 <=> 1)
 ");
         }
 
+        // TODO: this is broken in partial trust
+
         /// <summary>
         /// Calling (explicit) interface methods on internal classes.
         /// A method that is accessible via any interface should be called. 
@@ -1704,7 +1749,6 @@ puts($obj2 <=> 1)
             Context.ObjectClass.SetConstant("InterfaceBar1", Context.GetModule(typeof(InterfaceBar1)));
 
             TestOutput(@"
-p Inst.GetEnumerator().nil?
 p Inst.baz
 p Inst.clr_member(System::IComparable, :compare_to).call(nil)
 p Inst.clr_member(InterfaceBar1, :bar).call
@@ -1739,7 +1783,7 @@ false
         /// </summary>
         public void ClrTypes1() {
             TestTypeAndTracker(typeof(ClassWithMethods1));
-            TestTypeAndTracker(ReflectionCache.GetTypeTracker(typeof(ClassWithMethods1)));
+            TestTypeAndTracker(TypeTracker.GetTypeTracker(typeof(ClassWithMethods1)));
         }
 
         public void TestTypeAndTracker(object type) {
@@ -1786,7 +1830,7 @@ System::Collections
         }
 
         public void ClrNamespaces2() {
-            Runtime.LoadAssembly(typeof(InteropTests.Namespaces2.C).Assembly);
+            Runtime.LoadAssembly(typeof(InteropTests.Namespaces2.C).GetTypeInfo().Assembly);
             AssertOutput(() => CompilerTest(@"
 module InteropTests::Namespaces2
   X = 1
@@ -1820,7 +1864,7 @@ nil
         }
         
         public void ClrGenerics1() {
-            Runtime.LoadAssembly(typeof(Tests).Assembly);
+            Runtime.LoadAssembly(typeof(Tests).GetTypeInfo().Assembly);
 
             TestOutput(@"
 include InteropTests::Generics1
@@ -1901,6 +1945,7 @@ InteropTests::Generics1::C[String]
 [InteropTests::Generics1::C[Float], InteropTests::Generics1::C[T], Object]
 ");
 
+#if FEATURE_REFEMIT
             // It is possible to include a generic type definition into another class. It behaves like a Ruby module.
             // Besides inclusion of a generic interface instantiation transitively includes its generic type definition.
             TestOutput(@"
@@ -1921,9 +1966,10 @@ class ClassB
 end
 ", @"
 [ClassA, InteropTests::Generics1::I[T], InteropTests::Generics1::C[T], Object, InteropTests::Generics1, Kernel, BasicObject]
-#<TypeError: wrong argument type Class (expected Module)>
+" + @"#<TypeError: wrong argument type Class (expected Module)>
 [ClassB, InteropTests::Generics1::I[Fixnum], InteropTests::Generics1::I[T], Object, InteropTests::Generics1, Kernel, BasicObject]
 ");
+#endif
 
             // generic type definitions cannot be instantiated and don't expose their methods:
             TestOutput(@"
@@ -2021,7 +2067,7 @@ $d = D.new { |foo, bar| $foo = foo; $bar = bar; 777 }
         }
         
         public void ClrDelegates2() {
-            Runtime.LoadAssembly(typeof(Func<>).Assembly);
+            Runtime.LoadAssembly(typeof(Func<>).GetTypeInfo().Assembly);
 
             var f = Engine.Execute<Func<int, int>>(FuncFullName + @".of(Fixnum, Fixnum).new { |a| a + 1 }");
             Assert(f(1) == 2);
@@ -2690,6 +2736,7 @@ Z.eql?(1)
 ");
             Assert(!b);
 
+#if FEATURE_REFEMIT
             // detached method groups should be considered user-defined methods:
             var objs = Engine.Execute<RubyArray>(@"
 class C < B
@@ -2709,6 +2756,7 @@ end
             
             h = d.GetHashCode();
             Assert(h == 11);
+#endif
         }
 
         #endregion
@@ -2721,7 +2769,6 @@ end
         public void ClrNew1() {
             AssertOutput(delegate() {
                 CompilerTest(@"
-require 'mscorlib'
 b = System::Text::StringBuilder.new
 b.Append 1
 b.Append '-'
@@ -2805,7 +2852,12 @@ unstarted
         }
 
         private static bool IsCtorAvailable(RubyClass cls, params Type[] parameters) {
-            var method = cls.GetUnderlyingSystemType().GetConstructor(BindingFlags.Public | BindingFlags.Instance, null, parameters, null);
+            var method = cls.GetUnderlyingSystemType()
+                            .GetDeclaredConstructors()
+                            .WithBindingFlags(BindingFlags.Public | BindingFlags.Instance)
+                            .WithSignature(parameters)
+                            .FirstOrDefault();
+
             return method != null && !method.IsPrivate && !method.IsFamilyAndAssembly;
         }
 
@@ -3411,12 +3463,14 @@ p Inst.Foo(a) rescue p $!
             var r1 = Engine.Execute<int>("Inst.delegate(Proc.new { |x| x + 1 }).invoke(123)");
             Assert(r1 == 124);
 
-            // foreign meta-object conversion:
-            var py = Runtime.GetEngine("python");
-            var scope = Runtime.CreateScope();
-            py.Execute(@"def foo(x): return x + 2", scope);
-            var r2 = Engine.Execute<int>(@"Inst.delegate(foo).invoke(123)", scope);
-            Assert(r2 == 125);
+            if (_driver.RunPython) {
+                // foreign meta-object conversion:
+                var py = Runtime.GetEngine("python");
+                var scope = Runtime.CreateScope();
+                py.Execute(@"def foo(x): return x + 2", scope);
+                var r2 = Engine.Execute<int>(@"Inst.delegate(foo).invoke(123)", scope);
+                Assert(r2 == 125);
+            }
         }
 
         #endregion

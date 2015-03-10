@@ -25,11 +25,11 @@ using IronPython.Runtime.Operations;
 using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
 
-#if CLR2
+#if FEATURE_NUMERICS
+using System.Numerics;
+#else
 using Microsoft.Scripting.Math;
 using Complex = Microsoft.Scripting.Math.Complex64;
-#else
-using System.Numerics;
 #endif
 
 namespace IronPython.Runtime {
@@ -101,6 +101,38 @@ namespace IronPython.Runtime {
                             case '\"': buf.Append('\"'); continue;
                             case '\r': if (i < l && text[i] == '\n') i++; continue;
                             case '\n': continue;
+#if FEATURE_COMPRESSION
+                            case 'N': {
+                                    if (i < l && text[i] == '{') {
+                                        i++;
+                                        StringBuilder namebuf = new StringBuilder();
+                                        bool namecomplete = false;
+                                        while (i < l) {
+                                            char namech = text[i++];
+                                            if (namech != '}') {
+                                                namebuf.Append(namech);
+                                            } else {
+                                                namecomplete = true;
+                                                break;
+                                            }
+                                        }
+
+                                        if(!namecomplete || namebuf.Length  == 0)
+                                            throw PythonOps.StandardError(@"'unicodeescape' codec can't decode bytes in position {0}: malformed \N character escape", i);
+                                        
+                                        try {
+                                            string uval = IronPython.Modules.unicodedata.lookup(namebuf.ToString());
+                                            buf.Append(uval);
+                                        } catch(KeyNotFoundException) {
+                                            throw PythonOps.StandardError(@"'unicodeescape' codec can't decode bytes in position {0}: unknown Unicode character name", i);
+                                        }
+
+                                    } else {
+                                        throw PythonOps.StandardError(@"'unicodeescape' codec can't decode bytes in position {0}: malformed \N character escape", i);
+                                    }
+                                }
+                                continue;
+#endif
                             case 'x': //hex
                                 if (!TryParseInt(text, i, 2, 16, out val)) {
                                     goto default;
@@ -528,7 +560,7 @@ namespace IronPython.Runtime {
 
         private static double ParseFloatNoCatch(string text) {
             string s = ReplaceUnicodeDigits(text);
-            switch (s.lower().lstrip()) {
+            switch (s.ToLowerAsciiTriggered().lstrip()) {
                 case "nan":
                 case "+nan":
                 case "-nan":

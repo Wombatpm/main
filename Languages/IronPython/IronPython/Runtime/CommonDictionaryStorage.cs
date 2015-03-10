@@ -47,11 +47,7 @@ namespace IronPython.Runtime {
     /// array to ensure that readers are not seeing multiple bucket arrays.
     /// </summary>
     [Serializable]
-    internal class CommonDictionaryStorage : DictionaryStorage
-#if !SILVERLIGHT
-, ISerializable, IDeserializationCallback
-#endif
- {
+    internal class CommonDictionaryStorage : DictionaryStorage, ISerializable, IDeserializationCallback {
         protected Bucket[] _buckets;
         private int _count;
         private int _version;
@@ -150,7 +146,7 @@ namespace IronPython.Runtime {
             _nullValue = nullValue;
         }
 
-#if !SILVERLIGHT
+#if FEATURE_SERIALIZATION
         private CommonDictionaryStorage(SerializationInfo info, StreamingContext context) {
             // remember the serialization info, we'll deserialize when we get the callback.  This
             // enables special types like DBNull.Value to successfully be deserialized inside of us.  We
@@ -319,25 +315,47 @@ namespace IronPython.Runtime {
             Debug.Assert(key != null);
 
             Debug.Assert(_count < buckets.Length);
-            int index = hc % buckets.Length;
+            int startIndex = hc % buckets.Length;
 
+            // scan forward for matching key first
+            int index = startIndex;
+            int firstUsableIndex = -1;
             for (; ; ) {
                 Bucket cur = buckets[index];
-                if (cur.Key == null || cur.Key == _removed) {
+                if (cur.Key == null) {
+                    // no entry was ever here, nothing more to probe
+                    if (firstUsableIndex == -1) {
+                        firstUsableIndex = index;
+                    }
                     break;
+                } else if (cur.Key == _removed) {
+                    // we recycled this bucket, so need to continue walking to see if a following bucket matches
+                    if (firstUsableIndex == -1) {
+                        // retain the index of the first recycled bucket, in case we need it later
+                        firstUsableIndex = index;
+                    }
                 } else if (Object.ReferenceEquals(key, cur.Key) || (cur.HashCode == hc && _eqFunc(key, cur.Key))) {
+                    // this bucket is a key match
                     _version++;
                     buckets[index].Value = value;
                     return false;
                 }
 
+                // keep walking
                 index = ProbeNext(buckets, index);
+
+                // if we ended up doing a full scan, then this means the key is not already in use and there are
+                // only recycled buckets available -- nothing more to probe
+                if (index == startIndex) {
+                    break;
+                }
             }
 
+            // the key wasn't found, but we did find a fresh or recycled (unused) bucket
             _version++;
-            buckets[index].HashCode = hc;
-            buckets[index].Value = value;
-            buckets[index].Key = key;
+            buckets[firstUsableIndex].HashCode = hc;
+            buckets[firstUsableIndex].Value = value;
+            buckets[firstUsableIndex].Key = key;
 
             return true;
         }
@@ -657,7 +675,7 @@ namespace IronPython.Runtime {
             lock (this) {
                 if (_buckets == null) {
                     if (_nullValue != null) {
-                        return new CommonDictionaryStorage(null, 1, _keyType, _hashFunc, _eqFunc, new NullValue(_nullValue.Value));
+                        return new CommonDictionaryStorage(null, 0, _keyType, _hashFunc, _eqFunc, new NullValue(_nullValue.Value));
                     }
 
                     return new CommonDictionaryStorage();
@@ -827,7 +845,7 @@ namespace IronPython.Runtime {
                 Value = value;
             }
         }
-#if !SILVERLIGHT
+#if FEATURE_SERIALIZATION
 
         /// <summary>
         /// Special marker NullValue used during deserialization to not add

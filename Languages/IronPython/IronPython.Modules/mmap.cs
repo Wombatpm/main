@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2 && !SILVERLIGHT
+#if FEATURE_MMAP
 
 using System;
 using System.Diagnostics;
@@ -48,6 +48,8 @@ namespace IronPython.Modules {
 
         public static readonly int ALLOCATIONGRANULARITY = GetAllocationGranularity();
         public static readonly int PAGESIZE = System.Environment.SystemPageSize;
+
+        public static readonly string __doc__ = null;
 
         private static readonly object _mmapErrorKey = new object();
 
@@ -717,7 +719,7 @@ namespace IronPython.Modules {
                 }
             }
 
-            #region Private implementation details
+#region Private implementation details
 
             private long Position {
                 get {
@@ -789,7 +791,7 @@ namespace IronPython.Modules {
 
             #endregion
 
-            #region Synchronization
+#region Synchronization
             
             private void EnsureOpen() {
                 if (_isClosed) {
@@ -806,7 +808,7 @@ namespace IronPython.Modules {
                     _mmap.EnsureOpen();
                 }
 
-                #region IDisposable Members
+#region IDisposable Members
 
                 public void Dispose() {
                     _mmap.CloseWorker();
@@ -818,7 +820,7 @@ namespace IronPython.Modules {
             #endregion
         }
 
-        #region P/Invoke for allocation granularity
+#region P/Invoke for allocation granularity
 
         [StructLayout(LayoutKind.Sequential)]
         private struct SYSTEM_INFO {

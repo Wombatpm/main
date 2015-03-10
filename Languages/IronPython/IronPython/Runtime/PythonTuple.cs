@@ -13,6 +13,18 @@
  *
  * ***************************************************************************/
 
+#if FEATURE_CORE_DLR
+using MSAst = System.Linq.Expressions;
+#else
+using MSAst = Microsoft.Scripting.Ast;
+#endif
+
+#if FEATURE_NUMERICS
+using System.Numerics;
+#else
+using Microsoft.Scripting.Math;
+#endif
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -24,24 +36,27 @@ using Microsoft.Scripting;
 using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
 
+using IronPython.Compiler.Ast;
+
 using IronPython.Runtime.Exceptions;
 using IronPython.Runtime.Operations;
 using IronPython.Runtime.Types;
 
-#if CLR2
-using Microsoft.Scripting.Math;
-#else
-using System.Numerics;
-#endif
+using Utils = Microsoft.Scripting.Ast.Utils;
 
 namespace IronPython.Runtime {
+    using Ast = MSAst.Expression;
+
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1710:IdentifiersShouldHaveCorrectSuffix")]
     [PythonType("tuple"), Serializable, DebuggerTypeProxy(typeof(CollectionDebugProxy)), DebuggerDisplay("tuple, {Count} items")]
-    public class PythonTuple : ICollection, IEnumerable, IEnumerable<object>, IList, IList<object>, ICodeFormattable,
+    public class PythonTuple : ICollection, IEnumerable, IEnumerable<object>, IList, IList<object>, ICodeFormattable, IExpressionSerializable,
 #if CLR2
         IValueEquality,
 #endif
         IStructuralEquatable, IStructuralComparable
+#if FEATURE_READONLY_COLLECTION_INTERFACE
+        , IReadOnlyList<object>
+#endif
     {
         internal readonly object[] _data;
         
@@ -637,6 +652,26 @@ namespace IronPython.Runtime {
             set {
                 throw new InvalidOperationException("Tuple is readonly");
             }
+        }
+
+        #endregion
+
+        #region IExpressionSerializable Members
+
+        public MSAst.Expression CreateExpression() {
+            Ast[] items = new Ast[Count];
+            for (int i = 0; i < items.Length; i++) {
+                items[i] = Utils.Constant(this[i]);
+            }
+
+            return Ast.Call(
+                AstMethods.MakeTuple,
+                Ast.NewArrayInit(
+                    typeof(object),
+                    items
+                )
+            );
+
         }
 
         #endregion

@@ -12,6 +12,7 @@
  *
  *
  * ***************************************************************************/
+#if FEATURE_NATIVE
 
 using System;
 using System.Diagnostics;
@@ -32,7 +33,6 @@ using Microsoft.Scripting.Math;
 using System.Numerics;
 #endif
 
-#if !SILVERLIGHT
 namespace IronPython.Modules {
     /// <summary>
     /// Provides helper functions which need to be called from generated code to implement various 
@@ -155,12 +155,18 @@ namespace IronPython.Modules {
             return null;
         }
 
+        private static readonly byte[] FakeZeroLength = { 42 };
+
         public static byte[] TryCheckBytes(object o) {
             Bytes bytes = o as Bytes;
             if (bytes != null) {
+                if (bytes._bytes.Length == 0) {
+                    // OpCodes.Ldelema refuses to get address of empty array
+                    // So we feed it with a fake one (cp34892)
+                    return FakeZeroLength;
+                }
                 return bytes._bytes;
             }
-
             return null;
         }
 
@@ -254,6 +260,25 @@ namespace IronPython.Modules {
             throw PythonOps.TypeErrorForTypeMismatch("wchar pointer", value);
         }
 
+        public static IntPtr GetBSTR(object value) {
+            string strVal = value as string;
+            if (strVal != null) {
+                return Marshal.StringToBSTR(strVal);
+            }
+
+
+            if (value == null) {
+                return IntPtr.Zero;
+            }
+
+            object asParam;
+            if (PythonOps.TryGetBoundAttr(value, "_as_parameter_", out asParam)) {
+                return GetBSTR(asParam);
+            }
+
+            throw PythonOps.TypeErrorForTypeMismatch("BSTR", value);
+        }
+
         public static IntPtr GetCharPointer(object value) {
             string strVal = value as string;
             if (strVal != null) {
@@ -282,6 +307,10 @@ namespace IronPython.Modules {
 
             if (value is BigInteger) {
                 return new IntPtr((long)(BigInteger)value);
+            }
+
+            if (value is Int64) {
+                return new IntPtr((Int64) value);
             }
 
             if (value == null) {
@@ -315,6 +344,11 @@ namespace IronPython.Modules {
             }
 
             throw PythonOps.TypeErrorForTypeMismatch("pointer", value);
+        }
+
+        public static IntPtr GetInterfacePointer(IntPtr self, int offset) {
+            var vtable = Marshal.ReadIntPtr(self);
+            return Marshal.ReadIntPtr(vtable, offset * IntPtr.Size);
         }
 
         public static IntPtr GetObject(object value) {
@@ -444,6 +478,11 @@ namespace IronPython.Modules {
             int? res = Converter.ImplicitConvertToInt32(value);
             if (res != null) {
                 return res.Value;
+            }
+
+            uint unsigned;
+            if (value is BigInteger && ((BigInteger)value).AsUInt32(out unsigned)) {
+                return (int)unsigned;
             }
 
             object asParam;

@@ -15,7 +15,7 @@
 
 using Microsoft.Scripting.Hosting;
 using IronRuby.Runtime;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -23,8 +23,6 @@ using Microsoft.Scripting.Generation;
 
 
 namespace HostingTest {
-    [TestClass]
-    [DeploymentItem(@"..\..\bin\Debug")]
     public class HAPITestBase {
 
         static internal PreDefinedCodeSnippets _codeSnippets;
@@ -69,7 +67,7 @@ namespace HostingTest {
         }
 
         public static ScriptRuntimeSetup CreateSetup() {
-            var configFile = Path.GetFullPath(Uri.UnescapeDataString(new Uri(typeof(HAPITestBase).Assembly.CodeBase).AbsolutePath)) + ".config";
+            var configFile = TestHelpers.StandardConfigFile;
             Debug.Assert(File.Exists(configFile), configFile);
             return ScriptRuntimeSetup.ReadConfiguration(configFile);
         }

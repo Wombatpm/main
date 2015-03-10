@@ -16,6 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Security;
 using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
 
@@ -34,13 +35,12 @@ namespace Microsoft.Scripting.Interpreter {
         
         private static readonly Dictionary<MethodInfo, CallInstruction> _cache = new Dictionary<MethodInfo, CallInstruction>();
 
+        /// <exception cref="SecurityException">Instruction can't be created due to insufficient privileges.</exception>
         public static CallInstruction Create(MethodInfo info) {
             return Create(info, info.GetParameters());
         }
 
-        /// <summary>
-        /// Creates a new ReflectedCaller which can be used to quickly invoke the provided MethodInfo.
-        /// </summary>
+        /// <exception cref="SecurityException">Instruction can't be created due to insufficient privileges.</exception>
         public static CallInstruction Create(MethodInfo info, ParameterInfo[] parameters) {
             int argumentCount = parameters.Length;
             if (!info.IsStatic) {
@@ -53,7 +53,7 @@ namespace Microsoft.Scripting.Interpreter {
                 return GetArrayAccessor(info, argumentCount);
             }
 
-            if (ReflectionUtils.IsDynamicMethod(info) || !info.IsStatic && info.DeclaringType.IsValueType) {
+            if (ReflectionUtils.IsDynamicMethod(info) || !info.IsStatic && info.DeclaringType.IsValueType()) {
                 return new MethodInfoCallInstruction(info, argumentCount);
             }
 
@@ -88,7 +88,7 @@ namespace Microsoft.Scripting.Interpreter {
                 }
             } catch (TargetInvocationException tie) {
                 if (!(tie.InnerException is NotSupportedException)) {
-                    throw;
+                    throw tie.InnerException;
                 }
 
                 res = new MethodInfoCallInstruction(info, argumentCount);
@@ -117,19 +117,19 @@ namespace Microsoft.Scripting.Interpreter {
                 case 1:
                     return Create(isGetter ?
                         arrayType.GetMethod("GetValue", new[] { typeof(int)}) :
-                        new Action<Array, int, object>(ArrayItemSetter1).Method
+                        new Action<Array, int, object>(ArrayItemSetter1).GetMethodInfo()
                     );
                
                 case 2: 
                     return Create(isGetter ? 
                         arrayType.GetMethod("GetValue", new[] { typeof(int), typeof(int) }) :
-                        new Action<Array, int, int, object>(ArrayItemSetter2).Method
+                        new Action<Array, int, int, object>(ArrayItemSetter2).GetMethodInfo()
                     );
 
                 case 3: 
                     return Create(isGetter ?
                         arrayType.GetMethod("GetValue", new[] { typeof(int), typeof(int), typeof(int) }) :
-                        new Action<Array, int, int, int, object>(ArrayItemSetter3).Method
+                        new Action<Array, int, int, int, object>(ArrayItemSetter3).GetMethodInfo()
                     );
 
                 default: 
@@ -290,4 +290,5 @@ namespace Microsoft.Scripting.Interpreter {
             return 1;
         }
     }
+    
 }

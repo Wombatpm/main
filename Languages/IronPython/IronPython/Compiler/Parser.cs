@@ -27,10 +27,10 @@ using IronPython.Runtime;
 using IronPython.Runtime.Exceptions;
 using IronPython.Runtime.Types;
 
-#if CLR2
-using Microsoft.Scripting.Math;
-#else
+#if FEATURE_NUMERICS
 using System.Numerics;
+#else
+using Microsoft.Scripting.Math;
 #endif
 
 namespace IronPython.Compiler {
@@ -59,7 +59,7 @@ namespace IronPython.Compiler {
         private bool _fromFutureAllowed;
         private string _privatePrefix;
         private bool _parsingStarted, _allowIncomplete;
-        private bool _inLoop, _inFinally, _isGenerator, _returnWithValue;
+        private bool _inLoop, _inFinally, _inFinallyLoop, _isGenerator, _returnWithValue;
         private SourceCodeReader _sourceReader;
         private int _errorCode;
         private readonly CompilerContext _context;
@@ -507,7 +507,7 @@ namespace IronPython.Compiler {
                 case TokenKind.KeywordContinue:
                     if (!_inLoop) {
                         ReportSyntaxError("'continue' not properly in loop");
-                    } else if (_inFinally) {
+                    } else if (_inFinally && !_inFinallyLoop) {
                         ReportSyntaxError("'continue' not supported inside 'finally' clause");
                     }
                     return FinishSmallStmt(new ContinueStatement());
@@ -637,6 +637,8 @@ namespace IronPython.Compiler {
             if (l.Count == 0) {
                 // Check empty expression and convert to 'none'
                 yieldResult = new ConstantExpression(null);
+                // location set to match yield location (consistent with cpython)
+                yieldResult.SetLoc(_globalParent, start, GetEnd());
             } else if (l.Count != 1) {
                 // make a tuple
                 yieldResult = MakeTupleOrExpr(l, trailingComma);
@@ -1581,28 +1583,36 @@ namespace IronPython.Compiler {
 
         private Statement ParseLoopSuite() {
             Statement body;
-            bool inLoop = _inLoop;
+            bool inLoop = _inLoop, inFinallyLoop = _inFinallyLoop;
             try {
                 _inLoop = true;
+                _inFinallyLoop = _inFinally;
                 body = ParseSuite();
             } finally {
                 _inLoop = inLoop;
+                _inFinallyLoop = inFinallyLoop;
             }
             return body;
         }
 
         private Statement ParseClassOrFuncBody() {
             Statement body;
-            bool inLoop = _inLoop, inFinally = _inFinally, isGenerator = _isGenerator, returnWithValue = _returnWithValue;
+            bool inLoop = _inLoop, 
+                 inFinally = _inFinally, 
+                 inFinallyLoop = _inFinallyLoop,
+                 isGenerator = _isGenerator, 
+                 returnWithValue = _returnWithValue;
             try {
                 _inLoop = false;
                 _inFinally = false;
+                _inFinallyLoop = false;
                 _isGenerator = false;
                 _returnWithValue = false;
                 body = ParseSuite();
             } finally {
                 _inLoop = inLoop;
                 _inFinally = inFinally;
+                _inFinallyLoop = inFinallyLoop;
                 _isGenerator = isGenerator;
                 _returnWithValue = returnWithValue;
             }
@@ -1710,12 +1720,14 @@ namespace IronPython.Compiler {
 
         private Statement ParseFinallySuite(Statement finallySuite) {
             MarkFunctionContainsFinally();
-            bool inFinally = _inFinally;
+            bool inFinally = _inFinally, inFinallyLoop = _inFinallyLoop;
             try {
                 _inFinally = true;
+                _inFinallyLoop = false;
                 finallySuite = ParseSuite();
             } finally {
                 _inFinally = inFinally;
+                _inFinallyLoop = inFinallyLoop;
             }
             return finallySuite;
         }
@@ -2734,7 +2746,7 @@ namespace IronPython.Compiler {
                             if (!first) {
                                 ReportSyntaxError("invalid syntax");
                             }
-                            return FinishDictComp(e1, e2);
+                            return FinishDictComp(e1, e2, oStart, oEnd);
                         }
 
                         SliceExpression se = new SliceExpression(e1, e2, null, false);
@@ -2752,7 +2764,7 @@ namespace IronPython.Compiler {
                             if (!first) {
                                 ReportSyntaxError("invalid syntax");
                             }
-                            return FinishSetComp(e1);
+                            return FinishSetComp(e1, oStart, oEnd);
                         }
 
                         // error recovery
@@ -2800,17 +2812,43 @@ namespace IronPython.Compiler {
         }
 
         // comp_iter '}'
-        private SetComprehension FinishSetComp(Expression item) {
+        private SetComprehension FinishSetComp(Expression item, int oStart, int oEnd) {
             ComprehensionIterator[] iters = ParseCompIter();
             Eat(TokenKind.RightBrace);
-            return new SetComprehension(item, iters);
+
+            var cStart = GetStart();
+            var cEnd = GetEnd();
+            if (_sink != null) {
+                _sink.MatchPair(
+                    new SourceSpan(_tokenizer.IndexToLocation(oStart), _tokenizer.IndexToLocation(oEnd)),
+                    new SourceSpan(_tokenizer.IndexToLocation(cStart), _tokenizer.IndexToLocation(cEnd)),
+                    1
+                );
+            }
+
+            var ret = new SetComprehension(item, iters);
+            ret.SetLoc(_globalParent, oStart, cEnd);
+            return ret;
         }
 
         // comp_iter '}'
-        private DictionaryComprehension FinishDictComp(Expression key, Expression value) {
+        private DictionaryComprehension FinishDictComp(Expression key, Expression value, int oStart, int oEnd) {
             ComprehensionIterator[] iters = ParseCompIter();
             Eat(TokenKind.RightBrace);
-            return new DictionaryComprehension(key, value, iters);
+
+            var cStart = GetStart();
+            var cEnd = GetEnd();
+            
+            if (_sink != null) {
+                _sink.MatchPair(
+                    new SourceSpan(_tokenizer.IndexToLocation(oStart), _tokenizer.IndexToLocation(oEnd)),
+                    new SourceSpan(_tokenizer.IndexToLocation(cStart), _tokenizer.IndexToLocation(cEnd)),
+                    1
+                );
+            }
+            var ret = new DictionaryComprehension(key, value, iters);
+            ret.SetLoc(_globalParent, oStart, cEnd);
+            return ret;
         }
 
         // comp_iter: comp_for | comp_if
@@ -3090,7 +3128,7 @@ namespace IronPython.Compiler {
 
         public void Dispose() {
             if (_sourceReader != null) {
-                _sourceReader.Close();
+                _sourceReader.Dispose();
             }
         }
 

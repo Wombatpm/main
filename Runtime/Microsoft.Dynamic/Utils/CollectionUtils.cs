@@ -16,7 +16,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Microsoft.Contracts;
 
 namespace Microsoft.Scripting.Utils {
     /// <summary>
@@ -37,6 +36,26 @@ namespace Microsoft.Scripting.Utils {
     }
 
     public static class CollectionUtils {
+#if !FEATURE_VARIANCE
+        public static IEnumerable<T> Cast<S, T>(this IEnumerable<S> sequence) where S : T {
+            foreach (var item in sequence) {
+                yield return (T)item;
+            }
+        }
+#else
+        public static IEnumerable<T> Cast<S, T>(this IEnumerable<S> sequence) where S : T {
+            return (IEnumerable<T>)sequence;
+        }
+#endif
+
+        public static IEnumerable<TSuper> ToCovariant<T, TSuper>(IEnumerable<T> enumerable)
+            where T : TSuper {
+#if FEATURE_VARIANCE
+            return (IEnumerable<TSuper>)enumerable;
+#else
+            return new CovariantConvertor<T, TSuper>(enumerable);
+#endif
+        }
 
         public static void AddRange<T>(ICollection<T> collection, IEnumerable<T> items) {
             ContractUtils.RequiresNotNull(collection, "collection");
@@ -74,11 +93,6 @@ namespace Microsoft.Scripting.Utils {
             }
         }
 
-        public static IEnumerable<TSuper> ToCovariant<T, TSuper>(IEnumerable<T> enumerable)
-            where T : TSuper {
-            return new CovariantConvertor<T, TSuper>(enumerable);
-        }
-
         private class CovariantConvertor<T, TSuper> : IEnumerable<TSuper> where T : TSuper {
             private IEnumerable<T> _enumerable;
 
@@ -87,14 +101,48 @@ namespace Microsoft.Scripting.Utils {
                 _enumerable = enumerable;
             }
 
-            [Pure]
             public IEnumerator<TSuper> GetEnumerator() {
                 return CollectionUtils.ToCovariant<T, TSuper>(_enumerable.GetEnumerator());
             }
 
-            [Pure]
             IEnumerator IEnumerable.GetEnumerator() {
                 return GetEnumerator();
+            }
+        }
+
+        public static IDictionaryEnumerator ToDictionaryEnumerator(IEnumerator<KeyValuePair<object, object>> enumerator) {
+            return new DictionaryEnumerator(enumerator);
+        }
+
+        private sealed class DictionaryEnumerator : IDictionaryEnumerator {
+            private readonly IEnumerator<KeyValuePair<object, object>> _enumerator;
+
+            public DictionaryEnumerator(IEnumerator<KeyValuePair<object, object>> enumerator) {
+                _enumerator = enumerator;
+            }
+
+            public DictionaryEntry Entry {
+                get { return new DictionaryEntry(_enumerator.Current.Key, _enumerator.Current.Value); }
+            }
+
+            public object Key {
+                get { return _enumerator.Current.Key; }
+            }
+
+            public object Value {
+                get { return _enumerator.Current.Value; }
+            }
+
+            public object Current {
+                get { return Entry; }
+            }
+
+            public bool MoveNext() {
+                return _enumerator.MoveNext();
+            }
+
+            public void Reset() {
+                _enumerator.Reset();
             }
         }
 
@@ -149,15 +197,6 @@ namespace Microsoft.Scripting.Utils {
             }
 
             return res;
-        }
-
-        public static IEnumerable<TRet> Select<TRet>(this IEnumerable enumerable, Func<object, TRet> selector) {
-            ContractUtils.RequiresNotNull(enumerable, "enumerable");
-            ContractUtils.RequiresNotNull(selector, "selector");
-
-            foreach (object item in enumerable) {
-                yield return selector(item);
-            }
         }
 
         public static List<T> GetRange<T>(IList<T> list, int index, int count) {
@@ -234,7 +273,7 @@ namespace Microsoft.Scripting.Utils {
         }
 
 
-#if SILVERLIGHT
+#if SILVERLIGHT || WIN8 || WP75
         // HashSet.CreateSetComparer not available on Silverlight
         public static IEqualityComparer<HashSet<T>> CreateSetComparer<T>() {
             return new HashSetEqualityComparer<T>();

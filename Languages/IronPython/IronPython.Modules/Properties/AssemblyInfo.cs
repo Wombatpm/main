@@ -22,10 +22,8 @@ using System.Security;
 // associated with an assembly.
 [assembly: AssemblyTitle("IronPython.Modules")]
 [assembly: AssemblyDescription("")]
-[assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Microsoft")]
+[assembly: AssemblyConfiguration(BuildInfo.Configuration)]
 [assembly: AssemblyProduct("IronPython.Modules")]
-[assembly: AssemblyCopyright("© Microsoft Corporation.  All rights reserved.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -47,12 +45,14 @@ using System.Security;
 // You can specify all the values or you can default the Revision and Build Numbers 
 // by using the '*' as shown below:
 
+#if !WIN8
 [assembly: SecurityTransparent]
+#endif
 
-#if !SILVERLIGHT
+#if FEATURE_APTCA
 [assembly: AllowPartiallyTrustedCallers]
-#if !CLR2
+#endif
+
+#if FEATURE_SECURITY_RULES
 [assembly: SecurityRules(SecurityRuleSet.Level1)]
 #endif
-#endif
-

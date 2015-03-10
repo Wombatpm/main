@@ -48,6 +48,10 @@ namespace IronRuby.Runtime {
             return CreateRuntimeError("can't modify frozen object");
         }
 
+        public static Exception/*!*/ CreateArrayFrozenError() {
+            return CreateRuntimeError("can't modify frozen array");
+        }
+
         public static Exception/*!*/ CreateTypeConversionError(string/*!*/ fromType, string/*!*/ toType) {
             Assert.NotNull(fromType, toType);
             return CreateTypeError("can't convert {0} into {1}", fromType, toType);
@@ -77,7 +81,7 @@ namespace IronRuby.Runtime {
         public static Exception/*!*/ CreateMissingDefaultConstructorError(RubyClass/*!*/ rubyClass, string/*!*/ initializerOwnerName) {
             Debug.Assert(rubyClass.IsRubyClass);
 
-            Type baseType = rubyClass.GetUnderlyingSystemType().BaseType;
+            Type baseType = rubyClass.GetUnderlyingSystemType().GetBaseType();
             Debug.Assert(baseType != null);
 
             return CreateTypeError("can't allocate class `{1}' that derives from type `{0}' with no default constructor;" +

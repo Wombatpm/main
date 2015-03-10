@@ -23,10 +23,8 @@ using System.Security;
 // associated with an assembly.
 [assembly: AssemblyTitle("IronPython")]
 [assembly: AssemblyDescription("")]
-[assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Microsoft")]
+[assembly: AssemblyConfiguration(BuildInfo.Configuration)]
 [assembly: AssemblyProduct("IronPython")]
-[assembly: AssemblyCopyright("© Microsoft Corporation.  All rights reserved.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -50,8 +48,11 @@ using System.Security;
 
 [assembly: NeutralResourcesLanguage("en-US")]
 
+#if !WIN8
 [assembly: SecurityTransparent]
+#endif
+
 [assembly: CLSCompliant(false)]
-#if !CLR2 && !SILVERLIGHT
+#if FEATURE_SECURITY_RULES
 [assembly: SecurityRules(SecurityRuleSet.Level1)]
 #endif

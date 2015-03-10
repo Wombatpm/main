@@ -15,7 +15,6 @@
 
 using System.Diagnostics;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 using IronRuby.Compiler.Generation;
 using IronRuby.Runtime;
 using IronRuby.Runtime.Calls;
@@ -28,12 +27,14 @@ namespace IronRuby.Builtins {
     /// Note that for classes that inherit from some other class, RubyTypeDispenser gets used
     /// </summary>
     [DebuggerTypeProxy(typeof(RubyObjectDebugView))]
-    [DebuggerDisplay(RubyObject.DebuggerDisplayValue, Type = RubyObject.DebuggerDisplayType)]
+    [DebuggerDisplay(DebuggerDisplayValueStr, Type = DebuggerDisplayTypeStr)]
     public partial class RubyObject : IRubyObject, IDuplicable, ISerializable {
         internal const string ImmediateClassFieldName = "_immediateClass"; 
         internal const string InstanceDataFieldName = "_instanceData";
-        internal const string DebuggerDisplayValue = "{" + ImmediateClassFieldName + ".GetDebuggerDisplayValue(this),nq}";
-        internal const string DebuggerDisplayType = "{" + ImmediateClassFieldName + ".GetDebuggerDisplayType(),nq}";
+        internal const string DebuggerDisplayValueMethodName = "GetDebuggerDisplayValue";
+        internal const string DebuggerDisplayTypeMethodName = "GetDebuggerDisplayType";
+        internal const string DebuggerDisplayValueStr = "{" + DebuggerDisplayValueMethodName + "(),nq}";
+        internal const string DebuggerDisplayTypeStr = "{" + DebuggerDisplayTypeMethodName + "(),nq}";
 
         private RubyInstanceData _instanceData;
         private RubyClass/*!*/ _immediateClass;
@@ -68,7 +69,7 @@ namespace IronRuby.Builtins {
         #region ToString, Equals, GetHashCode
 
         public override string/*!*/ ToString() {
-#if DEBUG && !SILVERLIGHT && CLR2
+#if DEBUG && FEATURE_FULL_CONSOLE
             if (RubyBinder._DumpingExpression) {
                 return RubyUtils.ObjectBaseToMutableString(this).ToString();
             }
@@ -166,7 +167,7 @@ namespace IronRuby.Builtins {
 
         #region Serialization
 
-#if !SILVERLIGHT // serialization
+#if FEATURE_SERIALIZATION
         protected RubyObject(SerializationInfo/*!*/ info, StreamingContext context) {
             RubyOps.DeserializeObject(out _instanceData, out _immediateClass, info);
         }
@@ -175,6 +176,18 @@ namespace IronRuby.Builtins {
             RubyOps.SerializeObject(_instanceData, _immediateClass, info);
         }
 #endif
+
+        #endregion
+
+        #region Debugger Display
+
+        private string GetDebuggerDisplayValue() {
+            return RubyOps.GetDebuggerDisplayValue(_immediateClass, this);
+        }
+
+        private string GetDebuggerDisplayType() {
+            return RubyOps.GetDebuggerDisplayType(_immediateClass);
+        }
 
         #endregion
     }

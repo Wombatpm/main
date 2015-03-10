@@ -53,7 +53,7 @@ namespace IronPython.Modules {
 
         internal static string PreferredEncoding {
             get {
-#if !SILVERLIGHT    // No ANSICodePage in Silverlight
+#if FEATURE_ANSICP    // No ANSICodePage in Silverlight
                 return "cp" + CultureInfo.CurrentCulture.TextInfo.ANSICodePage.ToString();
 #else
                 return "";
@@ -64,12 +64,12 @@ namespace IronPython.Modules {
         [Documentation("gets the default locale tuple")]
         public static object _getdefaultlocale() {            
             return PythonTuple.MakeTuple(
-                CultureInfo.CurrentCulture.Name.Replace('-', '_').Replace(' ', '_'), 
+                GetDefaultLocale(), 
                 PreferredEncoding
             );
         }
 
-        [Documentation(@"gets the locale's convetions table.  
+        [Documentation(@"gets the locale's conventions table.  
 
 The conventions table is a dictionary that contains information on how to use 
 the locale for numeric and monetary formatting")]
@@ -93,6 +93,10 @@ If locale is None then the current setting is returned.
             if (locale == null) {
                 return li.GetLocale(context, category);
             }
+            //  An empty string specifies the user’s default settings.
+            if (locale == "") {
+                locale = GetDefaultLocale();
+            }
 
             return li.SetLocale(context, category, locale);
         }
@@ -102,11 +106,15 @@ If locale is None then the current setting is returned.
             return GetLocaleInfo(context).Collate.CompareInfo.Compare(string1, string2, CompareOptions.None);
         }
 
-        [Documentation(@"returns a transformed string that can be compared using the built-in cmp.
-        
-Currently returns the string unmodified")]
-        public static object strxfrm(string @string) {
+        [Documentation(@"returns a System.Globalization.SortKey that can be compared using the built-in cmp.
+
+Note: Return value differs from CPython - it is not a string.")]
+        public static object strxfrm(CodeContext/*!*/ context, string @string) {
+#if FEATURE_SORTKEY
+            return GetLocaleInfo(context).Collate.CompareInfo.GetSortKey(@string);
+#else
             return @string;
+#endif
         }
 
         private enum LocaleCategories {
@@ -116,6 +124,10 @@ Currently returns the string unmodified")]
             Monetary = 3,
             Numeric = 4,
             Time = 5,
+        }
+
+        private static string GetDefaultLocale() {
+            return CultureInfo.CurrentCulture.Name.Replace('-', '_').Replace(' ', '_');
         }
 
         internal class LocaleInfo {
@@ -240,7 +252,7 @@ Currently returns the string unmodified")]
             }
 
             /// <summary>
-            /// Popupates the given directory w/ the locale information from the given
+            /// Populates the given directory w/ the locale information from the given
             /// CultureInfo.
             /// </summary>
             private void CreateConventionsDict() {

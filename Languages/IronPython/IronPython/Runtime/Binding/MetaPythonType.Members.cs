@@ -14,7 +14,7 @@
  * ***************************************************************************/
 
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using Microsoft.Scripting.Ast;
@@ -67,7 +67,7 @@ namespace IronPython.Runtime.Binding {
             PythonContext state = PythonContext.GetPythonContext(member);
 
             if (Value.IsSystemType) {
-                MemberTracker tt = MemberTracker.FromMemberInfo(Value.UnderlyingSystemType);
+                MemberTracker tt = MemberTracker.FromMemberInfo(Value.UnderlyingSystemType.GetTypeInfo());
                 MemberGroup mg = state.Binder.GetMember(MemberRequestKind.Set, Value.UnderlyingSystemType, member.Name);
 
                 // filter protected member access against .NET types, these can only be accessed from derived types...
@@ -106,7 +106,7 @@ namespace IronPython.Runtime.Binding {
             if (Value.IsSystemType) {
                 PythonContext state = PythonContext.GetPythonContext(member);
 
-                MemberTracker tt = MemberTracker.FromMemberInfo(Value.UnderlyingSystemType);
+                MemberTracker tt = MemberTracker.FromMemberInfo(Value.UnderlyingSystemType.GetTypeInfo());
 
                 // have the default binder perform it's operation against a TypeTracker and then
                 // replace the test w/ our own.
@@ -384,7 +384,7 @@ namespace IronPython.Runtime.Binding {
                         AstUtils.Constant(metaType),
                         _tmp
                     ),
-                    Ast.Dynamic(
+                    DynamicExpression.Dynamic(
                             _state.InvokeOne,
                             typeof(object),
                             _codeContext,
@@ -782,7 +782,7 @@ namespace IronPython.Runtime.Binding {
                         new DynamicMetaObject(
                             Ast.Block(
                                 new[] { tmp },
-                                Ast.Dynamic(
+                                DynamicExpression.Dynamic(
                                     state.Invoke(new CallSignature(2)),
                                     typeof(object),
                                     AstUtils.Constant(state.SharedContext),

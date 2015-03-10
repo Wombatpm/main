@@ -17,14 +17,12 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Runtime.InteropServices;
-using Microsoft.Scripting.Runtime;
-using Microsoft.Scripting.Actions;
-using Microsoft.Scripting.Generation;
-using Microsoft.Scripting.Utils;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using IronRuby.Runtime;
 using Microsoft.Scripting;
+using Microsoft.Scripting.Runtime;
+using Microsoft.Scripting.Utils;
 
 namespace IronRuby.Builtins {
 
@@ -70,8 +68,6 @@ namespace IronRuby.Builtins {
 
         #endregion
 
-        #region Instance Methods
-
         [RubyMethod("==")]
         public static bool Equals(RespondToStorage/*!*/ respondTo, BinaryOpStorage/*!*/ equals, IDictionary<object, object>/*!*/ self, object other) {
             return Protocols.RespondTo(respondTo, other, "to_hash") && Protocols.IsEqual(equals, other, self);
@@ -109,8 +105,8 @@ namespace IronRuby.Builtins {
             }
 
             return true;
-        }        
-        
+        }
+
         [RubyMethod("[]")]
         public static object GetElement(RubyContext/*!*/ context, IDictionary<object, object>/*!*/ self, object key) {
             object result;
@@ -170,6 +166,9 @@ namespace IronRuby.Builtins {
             return null;
         }
 
+        #region delete, delete_if
+
+
         [RubyMethod("delete")]
         public static object Delete(BlockParam block, Hash/*!*/ self, object key) {
             self.RequireNotFrozen();
@@ -179,31 +178,41 @@ namespace IronRuby.Builtins {
         [RubyMethod("delete")]
         public static object Delete(BlockParam block, IDictionary<object, object>/*!*/ self, object key) {
             object value;
-            if (!self.TryGetValue(CustomStringDictionary.NullToObj(key), out value)) {
+            object nonNullKey = CustomStringDictionary.NullToObj(key);
+
+            if (!self.TryGetValue(nonNullKey, out value)) {
                 // key not found, call the block if it was passed in
                 if (block != null) {
                     object result;
                     block.Yield(key, out result);
                     return result;
                 }
+
                 return null;
             }
-            self.Remove(CustomStringDictionary.NullToObj(key));
+
+            self.Remove(nonNullKey);
             return value;
         }
 
         [RubyMethod("delete_if")]
-        public static object DeleteIf(BlockParam block, Hash/*!*/ self) {
+        public static Enumerator/*!*/ DeleteIf(Hash/*!*/ self) {
+            return new Enumerator((_, block) => DeleteIf(block, self));
+        }
+
+        [RubyMethod("delete_if")]
+        public static Enumerator/*!*/ DeleteIf(IDictionary<object, object>/*!*/ self) {
+            return new Enumerator((_, block) => DeleteIf(block, self));
+        }
+
+        [RubyMethod("delete_if")]
+        public static object DeleteIf([NotNull]BlockParam/*!*/ block, Hash/*!*/ self) {
             self.RequireNotFrozen();
             return DeleteIf(block, (IDictionary<object, object>)self);
         }
 
         [RubyMethod("delete_if")]
-        public static object DeleteIf(BlockParam block, IDictionary<object, object>/*!*/ self) {
-            if (self.Count > 0 && block == null) {
-                throw RubyExceptions.NoBlockGiven();
-            }
-
+        public static object DeleteIf([NotNull]BlockParam/*!*/ block, IDictionary<object, object>/*!*/ self) {
             // Make a copy of the keys to delete, so we don't modify the collection
             // while iterating over it
             RubyArray keysToDelete = new RubyArray();
@@ -227,8 +236,19 @@ namespace IronRuby.Builtins {
             return self;
         }
 
+        #endregion
+
+        #region each, each_pair, each_key, each_value
+
         [RubyMethod("each")]
-        public static object Each(RubyContext/*!*/ context, BlockParam block, IDictionary<object, object>/*!*/ self) {
+        [RubyMethod("each_pair")]
+        public static Enumerator/*!*/ Each(RubyContext/*!*/ context, IDictionary<object, object>/*!*/ self) {
+            return new Enumerator((_, block) => Each(context, block, self));
+        }
+
+        [RubyMethod("each")]
+        [RubyMethod("each_pair")]
+        public static object Each(RubyContext/*!*/ context, [NotNull]BlockParam/*!*/ block, IDictionary<object, object>/*!*/ self) {
             if (self.Count > 0) {
                 // Must make a copy of the Keys array so that we can iterate over a static set of keys. Remember
                 // that the block can modify the hash, hence the need for a copy of the keys
@@ -246,29 +266,14 @@ namespace IronRuby.Builtins {
 
             return self;
         }
-
-        [RubyMethod("each_pair")]
-        public static object EachPair(RubyContext/*!*/ context, BlockParam block, IDictionary<object, object>/*!*/ self) {
-            if (self.Count > 0) {
-                // Must make a copy of the Keys array so that we can iterate over a static set of keys. Remember
-                // that the block can modify the hash, hence the need for a copy of the keys
-                object[] keys = new object[self.Count];
-                self.Keys.CopyTo(keys, 0);
-
-                // TODO: what are all the scenarios where the block can mutate the hash? can it remove keys? if so, what happens?
-                for (int i = 0; i < keys.Length; i++) {
-                    object result;
-                    if (block.Yield(CustomStringDictionary.ObjToNull(keys[i]), self[keys[i]], out result)) {
-                        return result;
-                    }
-                }
-            }
-
-            return self;
+        
+        [RubyMethod("each_key")]
+        public static Enumerator/*!*/ EachKey(RubyContext/*!*/ context, IDictionary<object, object>/*!*/ self) {
+            return new Enumerator((_, block) => EachKey(context, block, self));
         }
 
         [RubyMethod("each_key")]
-        public static object EachKey(RubyContext/*!*/ context, BlockParam block, IDictionary<object, object>/*!*/ self) {
+        public static object EachKey(RubyContext/*!*/ context, [NotNull]BlockParam/*!*/ block, IDictionary<object, object>/*!*/ self) {
             if (self.Count > 0) {
                 // Must make a copy of the Keys array so that we can iterate over a static set of keys. Remember
                 // that the block can modify the hash, hence the need for a copy of the keys
@@ -288,7 +293,12 @@ namespace IronRuby.Builtins {
         }
 
         [RubyMethod("each_value")]
-        public static object EachValue(RubyContext/*!*/ context, BlockParam block, IDictionary<object, object>/*!*/ self) {
+        public static Enumerator/*!*/ EachValue(RubyContext/*!*/ context, IDictionary<object, object>/*!*/ self) {
+            return new Enumerator((_, block) => EachValue(context, block, self));
+        }
+
+        [RubyMethod("each_value")]
+        public static object EachValue(RubyContext/*!*/ context, [NotNull]BlockParam/*!*/ block, IDictionary<object, object>/*!*/ self) {
             if (self.Count > 0) {
                 // Ruby allows modifications while iterating thru the dictionary:
                 object[] values = new object[self.Count];
@@ -304,6 +314,8 @@ namespace IronRuby.Builtins {
 
             return self;
         }
+
+        #endregion
 
         [RubyMethod("empty?")]
         public static bool Empty(IDictionary<object, object>/*!*/ self) {
@@ -360,13 +372,6 @@ namespace IronRuby.Builtins {
                 }
             }
             return null;
-        }
-
-        [RubyMethod("indexes")]
-        [RubyMethod("indices")]
-        public static RubyArray/*!*/ Indexes(RubyContext/*!*/ context, IDictionary<object, object>/*!*/ self, params object[]/*!*/ keys) {
-            context.ReportWarning("Hash#indices is deprecated; use Hash#values_at");
-            return ValuesAt(context, self, keys);
         }
 
         [RubyMethod("invert")]
@@ -443,27 +448,46 @@ namespace IronRuby.Builtins {
             return ReplaceData(self, CopyKeyValuePairs(self));
         }
 
+        #region reject
+
+        [RubyMethod("reject")]
+        public static Enumerator/*!*/ Reject(
+            CallSiteStorage<Func<CallSite, object, object, object>>/*!*/ initializeCopyStorage,
+            CallSiteStorage<Func<CallSite, RubyClass, object>>/*!*/ allocateStorage,
+            RubyContext/*!*/ context, IDictionary<object, object>/*!*/ self) {
+            return new Enumerator((_, block) => Select(context, block, self));
+        }
+
         // This works like delete_if, not reject!
         // (because it needs to return the new collection)
         [RubyMethod("reject")]
         public static object Reject(
             CallSiteStorage<Func<CallSite, object, object, object>>/*!*/ initializeCopyStorage,
             CallSiteStorage<Func<CallSite, RubyClass, object>>/*!*/ allocateStorage,
-            BlockParam block, IDictionary<object, object>/*!*/ self) {
+            [NotNull]BlockParam/*!*/ block, IDictionary<object, object>/*!*/ self) {
 
             return DeleteIf(block, Duplicate(initializeCopyStorage, allocateStorage, self));
         }
 
+        [RubyMethod("reject!")]
+        public static Enumerator/*!*/ RejectMutate(Hash/*!*/ self) {
+            return new Enumerator((_, block) => RejectMutate(block, self));
+        }
+
         // This works like delete_if, but returns nil if no elements were removed
         [RubyMethod("reject!")]
-        public static object RejectMutate(BlockParam block, Hash/*!*/ self) {
+        public static object RejectMutate([NotNull]BlockParam/*!*/ block, Hash/*!*/ self) {
             self.RequireNotFrozen();
             return RejectMutate(block, (IDictionary<object, object>)self);
         }
 
         [RubyMethod("reject!")]
-        public static object RejectMutate(BlockParam block, IDictionary<object, object>/*!*/ self) {
+        public static Enumerator/*!*/ RejectMutate(IDictionary<object, object>/*!*/ self) {
+            return new Enumerator((_, block) => RejectMutate(block, self));
+        }
 
+        [RubyMethod("reject!")]
+        public static object RejectMutate([NotNull]BlockParam/*!*/ block, IDictionary<object, object>/*!*/ self) {
             // Make a copy of the keys to delete, so we don't modify the collection
             // while iterating over it
             RubyArray keysToDelete = new RubyArray();
@@ -486,6 +510,8 @@ namespace IronRuby.Builtins {
 
             return keysToDelete.Count == 0 ? null : self;
         }
+
+        #endregion
 
         [RubyMethod("replace")]
         public static Hash/*!*/ Replace(RubyContext/*!*/ context, Hash/*!*/ self, [DefaultProtocol, NotNull]IDictionary<object, object>/*!*/ other) {
@@ -550,6 +576,36 @@ namespace IronRuby.Builtins {
             return result;
         }
 
+        [RubyMethod("flatten")]
+        public static IList/*!*/ Flatten(ConversionStorage<IList>/*!*/ tryToAry, IDictionary<object, object>/*!*/ self,
+            [DefaultProtocol, DefaultParameterValue(1)] int maxDepth) {
+
+            if (maxDepth == 0) {
+                return ToArray(self);
+            } 
+            
+            if (maxDepth > 0) {
+                maxDepth--;
+            }
+
+            RubyArray result = new RubyArray();
+            IList list;
+            foreach (KeyValuePair<object, object> pair in self) {
+                if (maxDepth != 0 && (list = Protocols.TryCastToArray(tryToAry, pair.Key)) != null) {
+                    IListOps.Flatten(tryToAry, list, maxDepth - 1, result);
+                } else {
+                    result.Add(pair.Key);
+                }
+
+                if (maxDepth != 0 && (list = Protocols.TryCastToArray(tryToAry, pair.Value)) != null) {
+                    IListOps.Flatten(tryToAry, list, maxDepth - 1, result);
+                } else {
+                    result.Add(pair.Value);
+                }
+            }
+            return result;
+        }
+
         [RubyMethod("to_hash")]
         public static IDictionary<object, object> ToHash(IDictionary<object, object>/*!*/ self) {
             return self;
@@ -596,7 +652,17 @@ namespace IronRuby.Builtins {
             return values;
         }
 
-        #endregion
-    }
+        [RubyMethod("assoc")]
+        public static RubyArray/*!*/ Assoc(BinaryOpStorage/*!*/ equals, RubyContext/*!*/ context, IDictionary<object, object>/*!*/ self, object key) {
+            var equalsSite = equals.GetCallSite("==");
+            
+            foreach (var entry in self) {
+                if (Protocols.IsEqual(equalsSite, key, entry.Key)) {
+                    return new RubyArray(2) { entry.Key, entry.Value };
+                }
+            }
 
+            return null;
+        }
+    }
 }

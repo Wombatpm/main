@@ -66,7 +66,17 @@ namespace IronPython.Modules {
 
         [Documentation("new([data]) -> object (object used to calculate hash)")]
         public static sha @new(Bytes data) {
+            return new sha((IList<byte>)data);
+        }
+
+        [Documentation("new([data]) -> object (object used to calculate hash)")]
+        public static sha @new(PythonBuffer data) {
             return new sha(data);
+        }
+
+        [Documentation("new([data]) -> object (object used to calculate hash)")]
+        public static sha @new(ByteArray data) {
+            return new sha((IList<byte>)data);
         }
 
         [Documentation("new([data]) -> object (object used to calculate hash)")]
@@ -76,8 +86,8 @@ namespace IronPython.Modules {
 
         [Documentation("new([data]) -> object (object used to calculate hash)")]
         [PythonType, PythonHidden]
-        public class sha 
-#if !SILVERLIGHT
+        public class sha
+#if FEATURE_ICLONEABLE
             : ICloneable 
 #endif
         {
@@ -104,6 +114,14 @@ namespace IronPython.Modules {
             }
 
             public void update(Bytes newBytes) {
+                update((IList<byte>)newBytes);
+            }
+
+            public void update(PythonBuffer newBytes) {
+                update((IList<byte>)newBytes);
+            }
+
+            public void update(ByteArray newBytes) {
                 update((IList<byte>)newBytes);
             }
 
@@ -134,7 +152,7 @@ namespace IronPython.Modules {
                 return new sha(_bytes);
             }
 
-#if !SILVERLIGHT
+#if FEATURE_ICLONEABLE
             object ICloneable.Clone() {
                 return copy();
             }

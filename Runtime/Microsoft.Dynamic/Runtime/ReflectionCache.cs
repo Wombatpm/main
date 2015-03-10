@@ -12,12 +12,10 @@
  *
  *
  * ***************************************************************************/
-
 using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Microsoft.Scripting.Utils;
-using Microsoft.Contracts;
 using Microsoft.Scripting.Actions;
 
 namespace Microsoft.Scripting.Runtime {
@@ -26,42 +24,29 @@ namespace Microsoft.Scripting.Runtime {
     /// specific request.
     /// </summary>
     public static class ReflectionCache {
-        private static readonly Dictionary<MethodBaseCache, MethodGroup> _functions = new Dictionary<MethodBaseCache, MethodGroup>();
-        private static readonly Dictionary<Type, TypeTracker> _typeCache = new Dictionary<Type, TypeTracker>();
-
-        public static MethodGroup GetMethodGroup(Type type, string name) {
-            return GetMethodGroup(type, name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.InvokeMethod, null);
+#if WIN8 // tokens are not exposed, we need to implement method comparison that doesn't use them, for now just always return a new method group
+        public static MethodGroup GetMethodGroup(string name, MethodBase[] methods) {
+            return new MethodGroup(
+                ArrayUtils.ConvertAll<MethodBase, MethodTracker>(
+                    methods,
+                    delegate(MethodBase x) {
+                        return (MethodTracker)MemberTracker.FromMemberInfo(x);
+                    }
+                )
+            );
         }
 
-        /// <summary>
-        /// Gets a singleton method group from the provided type.
-        /// 
-        /// The provided method group will be unique based upon the methods defined, not based upon the type/name
-        /// combination.  In other words calling GetMethodGroup on a base type and a derived type that introduces
-        /// no new methods under a given name will result in the same method group for both types.
-        /// </summary>
-        public static MethodGroup GetMethodGroup(Type type, string name, BindingFlags bindingFlags, MemberFilter filter) {
-            ContractUtils.RequiresNotNull(type, "type");
-            ContractUtils.RequiresNotNull(name, "name");
-
-            MemberInfo[] mems = type.FindMembers(MemberTypes.Method,
-                bindingFlags,
-                filter ?? delegate(MemberInfo mem, object filterCritera) {
-                    return mem.Name == name;
-                },
-                null);
-
-            MethodGroup res = null;
-            if (mems.Length != 0) {
-                MethodInfo[] methods = ArrayUtils.ConvertAll<MemberInfo, MethodInfo>(
-                    mems,
-                    delegate(MemberInfo x) { return (MethodInfo)x; }
-                );
-                res = GetMethodGroup(name, methods);
+        public static MethodGroup GetMethodGroup(string name, MemberGroup mems) {
+            MethodTracker[] trackers = new MethodTracker[mems.Count];
+            for (int i = 0; i < trackers.Length; i++) {
+                trackers[i] = (MethodTracker)mems[i];
             }
-            return res;
-        }
 
+            return new MethodGroup(trackers);
+        }
+#else
+        private static readonly Dictionary<MethodBaseCache, MethodGroup> _functions = new Dictionary<MethodBaseCache, MethodGroup>();
+        
         public static MethodGroup GetMethodGroup(string name, MethodBase[] methods) {
             MethodGroup res = null;
             MethodBaseCache cache = new MethodBaseCache(name, methods);
@@ -102,18 +87,6 @@ namespace Microsoft.Scripting.Runtime {
             return res;
         }
 
-        public static TypeTracker GetTypeTracker(Type type) {
-            TypeTracker res;
-
-            lock (_typeCache) {
-                if (!_typeCache.TryGetValue(type, out res)) {
-                    _typeCache[type] = res = new NestedTypeTracker(type);
-                }
-            }
-
-            return res;
-        }
-
         /// <summary>
         /// TODO: Make me private again
         /// </summary>
@@ -131,17 +104,20 @@ namespace Microsoft.Scripting.Runtime {
             }
 
             private static int CompareMethods(MethodBase x, MethodBase y) {
-                if (x.Module == y.Module) {
+                Module xModule = x.Module;
+                Module yModule = y.Module;
+
+                if (xModule == yModule) {
                     return x.MetadataToken - y.MetadataToken;
                 }
-
-#if SILVERLIGHT
-                int xHash = x.Module.GetHashCode();
-                int yHash = y.Module.GetHashCode();
+                
+#if SILVERLIGHT || WIN8 || WP75
+                int xHash = xModule.GetHashCode();
+                int yHash = yModule.GetHashCode();
                 if (xHash != yHash) {
                     return xHash - yHash;
                 } else {
-                    long diff = IdDispenser.GetId(x.Module) - IdDispenser.GetId(y.Module);
+                    long diff = IdDispenser.GetId(xModule) - IdDispenser.GetId(yModule);
                     if (diff > 0) {
                         return 1;
                     } else if (diff < 0) {
@@ -151,11 +127,10 @@ namespace Microsoft.Scripting.Runtime {
                     }
                 }
 #else
-                return x.Module.ModuleVersionId.CompareTo(y.Module.ModuleVersionId);
+                return xModule.ModuleVersionId.CompareTo(yModule.ModuleVersionId);
 #endif
             }
 
-            [Confined]
             public override bool Equals(object obj) {
                 MethodBaseCache other = obj as MethodBaseCache;
                 if (other == null || _members.Length != other._members.Length || other._name != _name) {
@@ -188,7 +163,6 @@ namespace Microsoft.Scripting.Runtime {
                 return true;
             }
 
-            [Confined]
             public override int GetHashCode() {
                 int res = 6551;
                 foreach (MemberInfo mi in _members) {
@@ -199,5 +173,6 @@ namespace Microsoft.Scripting.Runtime {
                 return res;
             }
         }
+#endif
     }
 }

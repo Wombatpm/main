@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using MSAst = System.Linq.Expressions;
 #else
 using MSAst = Microsoft.Scripting.Ast;
@@ -83,6 +83,9 @@ namespace IronPython.Compiler.Ast {
         }
 
         internal override string CheckAssign() {
+            if (string.Compare(_name, "None") == 0) {
+                return "cannot assign to None";
+            }
             return null;
         }
 

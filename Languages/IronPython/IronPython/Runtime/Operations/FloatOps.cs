@@ -25,11 +25,11 @@ using Microsoft.Scripting.Utils;
 
 using IronPython.Runtime.Types;
 
-#if CLR2
+#if FEATURE_NUMERICS
+using System.Numerics;
+#else
 using Microsoft.Scripting.Math;
 using Complex = Microsoft.Scripting.Math.Complex64;
-#else
-using System.Numerics;
 #endif
 
 using SpecialNameAttribute = System.Runtime.CompilerServices.SpecialNameAttribute;
@@ -48,50 +48,51 @@ namespace IronPython.Runtime.Operations {
 
         [StaticExtensionMethod]
         public static object __new__(CodeContext/*!*/ context, PythonType cls, object x) {
-            if (cls == TypeCache.Double) {
-                if (x is string) {
-                    return ParseFloat((string)x);
-                } else if (x is Extensible<string>) {
-                    object res;
-                    if (PythonTypeOps.TryInvokeUnaryOperator(context, x, "__float__", out res)) {
-                        return res;
-                    }
-                    return ParseFloat(((Extensible<string>)x).Value);
-                } else if (x is char) {
-                    return ParseFloat(ScriptingRuntimeHelpers.CharToString((char)x));
+            object value = null;
+            if (x is string) {
+                value = ParseFloat((string)x);
+            } else if (x is Extensible<string>) {
+                if (!PythonTypeOps.TryInvokeUnaryOperator(context, x, "__float__", out value)) {
+                    value = ParseFloat(((Extensible<string>)x).Value);
                 }
-
-                if (x is Complex) {
-                    throw PythonOps.TypeError("can't convert complex to float; use abs(z)");
-                }
-
+            } else if (x is char) {
+                value = ParseFloat(ScriptingRuntimeHelpers.CharToString((char)x));
+            } else if (x is Complex) {
+                throw PythonOps.TypeError("can't convert complex to float; use abs(z)");
+            } else {
                 object d = PythonOps.CallWithContext(context, PythonOps.GetBoundAttr(context, x, "__float__"));
                 if (d is double) {
-                    return d;
+                    value = d;
                 } else if (d is Extensible<double>) {
-                    return ((Extensible<double>)d).Value;
+                    value = ((Extensible<double>)d).Value;
+                } else {
+                    throw PythonOps.TypeError("__float__ returned non-float (type {0})", PythonTypeOps.GetName(d));
                 }
+            }
 
-                throw PythonOps.TypeError("__float__ returned non-float (type {0})", PythonTypeOps.GetName(d));
+            if (cls == TypeCache.Double) {
+                return value;
             } else {
-                return cls.CreateInstance(context, x);
+                return cls.CreateInstance(context, value);
             }
         }
 
         [StaticExtensionMethod]
         public static object __new__(CodeContext/*!*/ context, PythonType cls, IList<byte> s) {
-            if (cls == TypeCache.Double) {
-                object value;
-                IPythonObject po = s as IPythonObject;
-                if (po != null &&
-                    PythonTypeOps.TryInvokeUnaryOperator(DefaultContext.Default, po, "__float__", out value)) {
-                    return value;
-                }
-
-                return ParseFloat(s.MakeString());
+            // First, check for subclasses of bytearray/bytes
+            object value;
+            IPythonObject po = s as IPythonObject;
+            if (po == null ||
+                !PythonTypeOps.TryInvokeUnaryOperator(DefaultContext.Default, po, "__float__", out value)) {
+                // If __float__oes not exist, just parse the string normally
+                value = ParseFloat(s.MakeString());
             }
 
-            return cls.CreateInstance(context, s);
+            if (cls == TypeCache.Double) {
+                return value;
+            } else { 
+                return cls.CreateInstance(context, value);
+            }
         }
 
         public static PythonTuple as_integer_ratio(double self) {
@@ -108,7 +109,7 @@ namespace IronPython.Runtime.Operations {
             }
             return PythonTuple.MakeTuple((BigInteger)self, dem);
         }
-        
+
         private static char[] _whitespace = new[] { ' ', '\t', '\n', '\f', '\v', '\r' };
 
         [ClassMethod, StaticExtensionMethod]
@@ -116,7 +117,7 @@ namespace IronPython.Runtime.Operations {
             if (String.IsNullOrEmpty(self)) {
                 throw PythonOps.ValueError("expected non empty string");
             }
-            
+
             self = self.Trim(_whitespace);
 
             // look for inf, infinity, nan, etc...
@@ -180,7 +181,7 @@ namespace IronPython.Runtime.Operations {
             if (exponent.Success) {
                 int exponentVal = 0;
                 if (!Int32.TryParse(exponent.Value.Substring(1), out exponentVal)) {
-                    if (exponent.Value.lower().StartsWith("p-") || finalBits == BigInteger.Zero) {
+                    if (exponent.Value.ToLowerAsciiTriggered().StartsWith("p-") || finalBits == BigInteger.Zero) {
                         double zeroRes = isNegative ? NegativeZero : PositiveZero;
 
                         if (cls == TypeCache.Double) {
@@ -216,7 +217,7 @@ namespace IronPython.Runtime.Operations {
 
             int highBit = finalBits.GetBitCount();
             // minus 1 because we'll discard the high bit as it's implicit
-            int finalExponent = highBit - decimalPointBit - 1;  
+            int finalExponent = highBit - decimalPointBit - 1;
 
             while (finalExponent < -1023) {
                 // if we have a number with a very negative exponent
@@ -264,7 +265,7 @@ namespace IronPython.Runtime.Operations {
                                 // we overflowed and we're a denormalized number == 0.  Increase the exponent making us a normalized
                                 // number.  Don't adjust the bits because we're now gaining an implicit 1 bit.
                                 finalExponent++;
-                            } 
+                            }
                         }
 
                         rounded = true;
@@ -466,8 +467,6 @@ namespace IronPython.Runtime.Operations {
         public static object __int__(double d) {
             if (Int32.MinValue <= d && d <= Int32.MaxValue) {
                 return (int)d;
-            } else if (Int64.MinValue <= d && d < Int64.MaxValue) {
-                return (long)d;
             } else if (double.IsInfinity(d)) {
                 throw PythonOps.OverflowError("cannot convert float infinity to integer");
             } else if (double.IsNaN(d)) {
@@ -681,7 +680,12 @@ namespace IronPython.Runtime.Operations {
 
         internal static int Compare(double x, decimal y) {
             if (x > (double)decimal.MaxValue) return +1;
+#if ANDROID // TODO: ?
+            const decimal minValue = -79228162514264337593543950335m;
+            if (x < (double)minValue) return -1;
+#else
             if (x < (double)decimal.MinValue) return -1;
+#endif
             return ((decimal)x).CompareTo(y);
         }
 
@@ -793,7 +797,7 @@ namespace IronPython.Runtime.Operations {
                 return spec.AlignNumericText(digits, false, Double.IsNaN(self) || Sign(self) > 0);
             } else {
                 // Always pass isZero=false so that -0.0 shows up
-                return spec.AlignNumericText(digits, false, Sign(self) > 0);
+                return spec.AlignNumericText(digits, false, Double.IsNaN(self) ? true : Sign(self) > 0);
             }
         }
 
@@ -1095,19 +1099,25 @@ namespace IronPython.Runtime.Operations {
 
         [StaticExtensionMethod]
         public static object __new__(CodeContext/*!*/ context, PythonType cls, IList<byte> s) {
-            if (cls != TypeCache.Single) {
-                return cls.CreateInstance(context, s);
-            }
-
+            // First, check for subclasses of bytearray/bytes
             object value;
             IPythonObject po = s as IPythonObject;
-            if (po != null &&
-                PythonTypeOps.TryInvokeUnaryOperator(DefaultContext.Default, po, "__float__", out value)) {
-                if (value is double) return (float)(double)value;
-                return value;
+            if (po == null ||
+                !PythonTypeOps.TryInvokeUnaryOperator(DefaultContext.Default, po, "__float__", out value)) {
+                // If __float__ does not exist, just parse the string normally
+                value = ParseFloat(s.MakeString());
             }
 
-            return ParseFloat(s.MakeString());
+            if (!(value is double)) {
+                // The check for double is correct, because that's all Python types should be using
+                throw PythonOps.TypeError("__float__ returned non-float (type %s)", DynamicHelpers.GetPythonType(value));
+            }
+
+            if (cls == TypeCache.Single) {
+                return (float)value;
+            } else {
+                return cls.CreateInstance(context, (float)value);
+            }
         }
 
         private static object ParseFloat(string x) {

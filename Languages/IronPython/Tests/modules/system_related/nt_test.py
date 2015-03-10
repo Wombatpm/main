@@ -65,6 +65,11 @@ def test_stat():
 
     AssertErrorWithNumber(WindowsError, 2, nt.stat, 'doesnotexist.txt')
     AssertErrorWithNumber(WindowsError, 22, nt.stat, 'bad?path.txt')
+
+# stat should accept bytes as argument
+def test_stat_cp34910():
+    AreEqual(nt.stat('/'), nt.stat(b'/'))
+    AreEqual(nt.lstat('/'), nt.lstat(b'/'))
  
     
 # getcwdu test
@@ -1118,6 +1123,15 @@ def test_strerror():
                     
     for key, value in test_dict.iteritems():
         AreEqual(nt.strerror(key), value)
+
+
+def test_popen_cp34837():
+    import subprocess
+    import os
+    p = subprocess.Popen("whoami", env=os.environ)
+    Assert(p!=None)
+    p.wait()
+
 
 #------------------------------------------------------------------------------
 try:

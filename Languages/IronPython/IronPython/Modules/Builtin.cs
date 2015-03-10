@@ -17,29 +17,29 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
-
 using Microsoft.Scripting;
 using Microsoft.Scripting.Actions;
 using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
 
 using IronPython.Compiler;
+using IronPython.Compiler.Ast;
 using IronPython.Runtime;
 using IronPython.Runtime.Binding;
 using IronPython.Runtime.Exceptions;
 using IronPython.Runtime.Operations;
 using IronPython.Runtime.Types;
-
-#if CLR2
+#if FEATURE_NUMERICS
+using System.Numerics;
+#else
 using Microsoft.Scripting.Math;
 using Complex = Microsoft.Scripting.Math.Complex64;
-#else
-using System.Numerics;
 #endif
 
 [assembly: PythonModule("__builtin__", typeof(IronPython.Modules.Builtin))]
@@ -277,31 +277,66 @@ namespace IronPython.Modules {
             throw PythonOps.TypeError("coercion failed");
         }
 
-        [Documentation("compile a unit of source code.\n\nThe source can be compiled either as exec, eval, or single.\nexec compiles the code as if it were a file\neval compiles the code as if were an expression\nsingle compiles a single statement\n\n")]
-        public static object compile(CodeContext/*!*/ context, string source, string filename, string mode, [DefaultParameterValue(null)]object flags, [DefaultParameterValue(null)]object dont_inherit) {
-            if (source.IndexOf('\0') != -1) {
+        [Documentation("compile a unit of source code.\n\nThe source can be compiled either as exec, eval, or single.\nexec compiles the code as if it were a file\neval compiles the code as if were an expression\nsingle compiles a single statement\n\nsource can either be a string or an AST object")]
+        public static object compile(CodeContext/*!*/ context, object source, string filename, string mode, [DefaultParameterValue(null)]object flags, [DefaultParameterValue(null)]object dont_inherit) {
+
+            bool astOnly = false;
+            int iflags = flags != null ? Converter.ConvertToInt32(flags) : 0;
+            if ((iflags & _ast.PyCF_ONLY_AST) != 0) {
+                astOnly = true;
+                iflags &= ~_ast.PyCF_ONLY_AST;
+            }
+
+            if (mode != "exec" && mode != "eval" && mode != "single") {
+                throw PythonOps.ValueError("compile() arg 3 must be 'exec' or 'eval' or 'single'");
+            }
+            if (source is _ast.AST) {
+                if (astOnly) {
+                    return source;
+                } else {
+                    PythonAst ast = _ast.ConvertToPythonAst(context, (_ast.AST) source);
+                    ast.Bind();
+                    ScriptCode code = ast.ToScriptCode();
+                    return ((RunnableScriptCode)code).GetFunctionCode(true);
+                }
+            }
+
+            string text;
+            if (source is string)
+                text = (string)source;                        
+            else if (source is PythonBuffer)
+                text = ((PythonBuffer)source).ToString();
+            else if (source is ByteArray)
+                text = ((ByteArray)source).ToString();
+            else if (source is Bytes)
+                text = ((Bytes)source).ToString();
+            else 
+                // cpython accepts either AST or readable buffer object
+                throw PythonOps.TypeError("srouce can be either AST or string, actual argument: {0}", source.GetType());
+            
+            if (text.IndexOf('\0') != -1) {
                 throw PythonOps.TypeError("compile() expected string without null bytes");
             }
 
-            source = RemoveBom(source);
+            text = RemoveBom(text);
 
             bool inheritContext = GetCompilerInheritance(dont_inherit);
-            CompileFlags cflags = GetCompilerFlags(flags);
+            CompileFlags cflags = GetCompilerFlags(iflags);
             PythonCompilerOptions opts = GetRuntimeGeneratedCodeCompilerOptions(context, inheritContext, cflags);
             if ((cflags & CompileFlags.CO_DONT_IMPLY_DEDENT) != 0) {
                 opts.DontImplyDedent = true;
             }
 
-            SourceUnit sourceUnit;
+            SourceUnit sourceUnit = null; 
             switch (mode) {
-                case "exec": sourceUnit = context.LanguageContext.CreateSnippet(source, filename, SourceCodeKind.Statements); break;
-                case "eval": sourceUnit = context.LanguageContext.CreateSnippet(source, filename, SourceCodeKind.Expression); break;
-                case "single": sourceUnit = context.LanguageContext.CreateSnippet(source, filename, SourceCodeKind.InteractiveCode); break;
-                default:
-                    throw PythonOps.ValueError("compile() arg 3 must be 'exec' or 'eval' or 'single'");
+                case "exec": sourceUnit = context.LanguageContext.CreateSnippet(text, filename, SourceCodeKind.Statements); break;
+                case "eval": sourceUnit = context.LanguageContext.CreateSnippet(text, filename, SourceCodeKind.Expression); break;
+                case "single": sourceUnit = context.LanguageContext.CreateSnippet(text, filename, SourceCodeKind.InteractiveCode); break;
             }
 
-            return FunctionCode.FromSourceUnit(sourceUnit, opts, true);
+            return !astOnly ? 
+                (object)FunctionCode.FromSourceUnit(sourceUnit, opts, true) :
+                (object)_ast.BuildAst(context, sourceUnit, opts, mode);
         }
 
         private static string RemoveBom(string source) {
@@ -360,6 +395,12 @@ namespace IronPython.Modules {
 
             return 0;
         }
+
+#if FEATURE_SORTKEY
+        public static int cmp(CodeContext/*!*/ context, [NotNull]SortKey x, [NotNull]SortKey y) {
+            return SortKey.Compare(x, y);
+        }
+#endif
 
         public static int cmp(CodeContext/*!*/ context, [NotNull]PythonTuple x, [NotNull]PythonTuple y) {
             if ((object)x == (object)y) {
@@ -1903,10 +1944,19 @@ namespace IronPython.Modules {
         }
 
         public static string raw_input(CodeContext/*!*/ context, object prompt) {
-            if (prompt != null) {
-                PythonOps.PrintNoNewline(context, prompt);
+            var pc = PythonContext.GetContext(context);
+            var readlineModule = pc.GetModuleByName("readline");
+            string line;
+            if (readlineModule != null) {
+                var rl = readlineModule.GetAttributeNoThrow(context, "rl");
+                line = PythonOps.Invoke(context, rl, "readline", new [] {prompt}) as string;
+            } else {
+                if (prompt != null) {
+                    PythonOps.PrintNoNewline(context, prompt);
+                }
+                line = PythonOps.ReadLineFromSrc(context, PythonContext.GetContext(context).SystemStandardIn) as string;
             }
-            string line = PythonOps.ReadLineFromSrc(context, PythonContext.GetContext(context).SystemStandardIn) as string;
+
             if (line != null && line.EndsWith("\n")) return line.Substring(0, line.Length - 1);
             return line;
         }
@@ -2159,12 +2209,13 @@ namespace IronPython.Modules {
                 SumObject(ref state, state.BigIntVal, current);
             }
         }
-#if CLR2
-        private static BigInteger MaxDouble = BigInteger.Create(Double.MaxValue);
-        private static BigInteger MinDouble = BigInteger.Create(Double.MinValue);
-#else
+
+#if FEATURE_NUMERICS
         private static BigInteger MaxDouble = new BigInteger(Double.MaxValue);
         private static BigInteger MinDouble = new BigInteger(Double.MinValue);
+#else
+        private static BigInteger MaxDouble = BigInteger.Create(Double.MaxValue);
+        private static BigInteger MinDouble = BigInteger.Create(Double.MinValue);
 #endif
 
         private static void SumBigIntAndDouble(ref SumState state, BigInteger bigInt, double dbl) {
@@ -2382,14 +2433,11 @@ namespace IronPython.Modules {
         }
 
         /// <summary> Returns the default compiler flags or the flags the user specified. </summary>
-        private static CompileFlags GetCompilerFlags(object flags) {
-            CompileFlags cflags = 0;
-            if (flags != null) {
-                cflags = (CompileFlags)Converter.ConvertToInt32(flags);
-                if ((cflags & ~(CompileFlags.CO_NESTED | CompileFlags.CO_GENERATOR_ALLOWED | CompileFlags.CO_FUTURE_DIVISION | CompileFlags.CO_DONT_IMPLY_DEDENT | 
-                    CompileFlags.CO_FUTURE_ABSOLUTE_IMPORT | CompileFlags.CO_FUTURE_WITH_STATEMENT)) != 0) {
-                    throw PythonOps.ValueError("unrecognized flags");
-                }
+        private static CompileFlags GetCompilerFlags(int flags) {
+            CompileFlags cflags = (CompileFlags)flags;
+            if ((cflags & ~(CompileFlags.CO_NESTED | CompileFlags.CO_GENERATOR_ALLOWED | CompileFlags.CO_FUTURE_DIVISION | CompileFlags.CO_DONT_IMPLY_DEDENT | 
+                CompileFlags.CO_FUTURE_ABSOLUTE_IMPORT | CompileFlags.CO_FUTURE_WITH_STATEMENT)) != 0) {
+                throw PythonOps.ValueError("unrecognized flags");
             }
 
             return cflags;

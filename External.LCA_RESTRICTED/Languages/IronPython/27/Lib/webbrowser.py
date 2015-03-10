@@ -101,7 +101,7 @@ def _synthesize(browser, update_tryorder=1):
     return [None, None]
 
 
-if sys.platform[:3] == "win":
+if sys.platform[:3] == "win" or (sys.platform == 'cli' and os.name == 'nt'):
     def _isexecutable(cmd):
         cmd = cmd.lower()
         if os.path.isfile(cmd) and cmd.endswith((".exe", ".bat")):
@@ -172,7 +172,7 @@ class GenericBrowser(BaseBrowser):
         cmdline = [self.name] + [arg.replace("%s", url)
                                  for arg in self.args]
         try:
-            if sys.platform[:3] == 'win':
+            if sys.platform[:3] == "win" or (sys.platform == 'cli' and os.name == 'nt'):
                 p = subprocess.Popen(cmdline)
             else:
                 p = subprocess.Popen(cmdline, close_fds=True)
@@ -189,7 +189,7 @@ class BackgroundBrowser(GenericBrowser):
         cmdline = [self.name] + [arg.replace("%s", url)
                                  for arg in self.args]
         try:
-            if sys.platform[:3] == 'win':
+            if sys.platform[:3] == "win" or (sys.platform == 'cli' and os.name == 'nt'):
                 p = subprocess.Popen(cmdline)
             else:
                 setsid = getattr(os, 'setsid', None)
@@ -285,12 +285,10 @@ class Mozilla(UnixBrowser):
     """Launcher class for Mozilla/Netscape browsers."""
 
     raise_opts = ["-noraise", "-raise"]
-
     remote_args = ['-remote', 'openURL(%s%action)']
     remote_action = ""
     remote_action_newwin = ",new-window"
     remote_action_newtab = ",new-tab"
-
     background = True
 
 Netscape = Mozilla
@@ -303,15 +301,13 @@ class Galeon(UnixBrowser):
     remote_args = ['%action', '%s']
     remote_action = "-n"
     remote_action_newwin = "-w"
-
     background = True
 
 
 class Opera(UnixBrowser):
     "Launcher class for Opera browser."
 
-    raise_opts = ["", "-raise"]
-
+    raise_opts = ["-noraise", ""]
     remote_args = ['-remote', 'openURL(%s%action)']
     remote_action = ""
     remote_action_newwin = ",new-window"
@@ -509,7 +505,7 @@ if os.environ.get("TERM"):
 # Platform support for Windows
 #
 
-if sys.platform[:3] == "win":
+if sys.platform[:3] == "win" or (sys.platform == 'cli' and os.name == 'nt'):
     class WindowsDefault(BaseBrowser):
         def open(self, url, new=0, autoraise=True):
             try:

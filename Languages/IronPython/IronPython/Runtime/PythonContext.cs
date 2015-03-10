@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using dynamic = System.Object;
@@ -56,7 +56,7 @@ namespace IronPython.Runtime {
     public delegate int HashDelegate(object o, ref HashDelegate dlg);
 
     public sealed partial class PythonContext : LanguageContext {
-        internal const string/*!*/ IronPythonDisplayName = "IronPython 2.7 Beta 2";
+        internal const string/*!*/ IronPythonDisplayName = CurrentVersion.DisplayName;
         internal const string/*!*/ IronPythonNames = "IronPython;Python;py";
         internal const string/*!*/ IronPythonFileExtensions = ".py";
 
@@ -73,7 +73,7 @@ namespace IronPython.Runtime {
         private readonly PythonOverloadResolverFactory _sharedOverloadResolverFactory;
         private readonly PythonBinder _binder;
         private readonly SysModuleDictionaryStorage _sysDict = new SysModuleDictionaryStorage();
-#if !SILVERLIGHT
+#if FEATURE_ASSEMBLY_RESOLVE && FEATURE_FILESYSTEM
         private readonly AssemblyResolveHolder _resolveHolder;
 #if !CLR2
         private readonly HashSet<Assembly> _loadedAssemblies = new HashSet<Assembly>();
@@ -281,7 +281,7 @@ namespace IronPython.Runtime {
             }
 
             List path = new List(_options.SearchPaths);
-#if !SILVERLIGHT
+#if FEATURE_ASSEMBLY_RESOLVE && FEATURE_FILESYSTEM
             _resolveHolder = new AssemblyResolveHolder(this);
             try {
                 Assembly entryAssembly = Assembly.GetEntryAssembly();
@@ -293,6 +293,13 @@ namespace IronPython.Runtime {
 
                     // add DLLs directory for user-defined extention modules
                     path.append(Path.Combine(entry, "DLLs"));
+
+#if DEBUG
+                    // For developer use, add External.LCA_RESTRICTED/Languages/IronPython/27/Lib
+                    string devStdLib = Path.Combine(entry, @"../../External.LCA_RESTRICTED/Languages/IronPython/27/Lib");
+                    if (Directory.Exists(devStdLib))
+                        path.append(devStdLib);
+#endif
                 }
             } catch (SecurityException) {
             }
@@ -302,7 +309,7 @@ namespace IronPython.Runtime {
 
             RecursionLimit = _options.RecursionLimit;
 
-#if !SILVERLIGHT
+#if FEATURE_ASSEMBLY_RESOLVE && FEATURE_FILESYSTEM
             object asmResolve;
             if (options == null ||
                 !options.TryGetValue("NoAssemblyResolveHook", out asmResolve) ||
@@ -315,7 +322,6 @@ namespace IronPython.Runtime {
                 }
             }
 #endif
-
             _equalityComparer = new PythonEqualityComparer(this);
             _equalityComparerNonGeneric = (IEqualityComparer)_equalityComparer;
 
@@ -399,6 +405,22 @@ namespace IronPython.Runtime {
             }
         }
 
+#if FEATURE_THREAD
+        /// <summary>
+        /// Gets or sets the main thread which should be interupted by thread.interrupt_main
+        /// </summary>
+        public Thread MainThread {
+            get {
+                return _mainThread;
+            }
+            set {
+                _mainThread = value;
+            }
+        }
+
+        private Thread _mainThread;
+#endif
+
         public IEqualityComparer<object>/*!*/ EqualityComparer {
             get { return _equalityComparer; }
         }
@@ -450,7 +472,7 @@ namespace IronPython.Runtime {
                 return NoneTypeOps.NoneHashCode;
             }
 
-            switch (Type.GetTypeCode(o.GetType())) {
+            switch (o.GetType().GetTypeCode()) {
                 case TypeCode.String:
                     dlg = StringHasher;
                     return StringHasher(o, ref dlg);
@@ -797,6 +819,9 @@ namespace IronPython.Runtime {
 
             SetSystemStateValue("path", new List(3));
 
+            SetSystemStateValue("ps1", ">>> ");
+            SetSystemStateValue("ps2", "... ");
+
             SetStandardIO();
 
             SysModule.PerformModuleReload(this, _systemState.__dict__);
@@ -1099,7 +1124,7 @@ namespace IronPython.Runtime {
             return builder.ToString();
         }
 
-#if !SILVERLIGHT
+#if FEATURE_CODEDOM
         // Convert a CodeDom to source code, and output the generated code and the line number mappings (if any)
         public override SourceUnit/*!*/ GenerateSourceCode(System.CodeDom.CodeObject codeDom, string path, SourceCodeKind kind) {
             return new IronPython.Hosting.PythonCodeDomCodeGen().GenerateCode((System.CodeDom.CodeMemberMethod)codeDom, this, path, kind);
@@ -1300,9 +1325,9 @@ namespace IronPython.Runtime {
         }
 
         #region Assembly Loading
+#if FEATURE_ASSEMBLY_RESOLVE && FEATURE_FILESYSTEM
 
         internal Assembly LoadAssemblyFromFile(string file) {
-#if !SILVERLIGHT
             // check all files in the path...
             List path;
             if (TryGetSystemPath(out path)) {
@@ -1319,27 +1344,19 @@ namespace IronPython.Runtime {
                     }
                 }
             }
-#endif
             return null;
         }
 
-#if !SILVERLIGHT // AssemblyResolve, files, path
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2001:AvoidCallingProblematicMethods", MessageId = "System.Reflection.Assembly.LoadFile")]
-#if CLR2
-        private static bool TryLoadAssemblyFromFileWithPath(string path, out Assembly res) {
-#else
         internal bool TryLoadAssemblyFromFileWithPath(string path, out Assembly res) {
-#endif
             if (File.Exists(path) && Path.IsPathRooted(path)) {
-                try {
-                    res = Assembly.LoadFile(path);
-                    if (res != null) {
+                res = Assembly.LoadFile(path);
+                if (res != null) {
 #if !CLR2
-                        _loadedAssemblies.Add(res);
+                    _loadedAssemblies.Add(res);
 #endif
-                        return true;
-                    }
-                } catch { }
+                    return true;
+                }
             }
 
             res = null;
@@ -1347,13 +1364,17 @@ namespace IronPython.Runtime {
         }
 
         internal Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args) {
-#if !CLR2
+#if !CLR2 && !ANDROID
             if (args.RequestingAssembly != null && !_loadedAssemblies.Contains(args.RequestingAssembly)) {
                 return null;
             }
 #endif
             AssemblyName an = new AssemblyName(args.Name);
-            return LoadAssemblyFromFile(an.Name);
+            try {
+                return LoadAssemblyFromFile(an.Name);
+            } catch {
+                return null;
+            }
         }
 
         /// <summary>
@@ -1417,7 +1438,7 @@ namespace IronPython.Runtime {
         public override void Shutdown() {
             object callable;
 
-#if !SILVERLIGHT
+#if FEATURE_ASSEMBLY_RESOLVE && FEATURE_FILESYSTEM
             UnhookAssemblyResolve();
 #endif
 
@@ -1441,9 +1462,11 @@ namespace IronPython.Runtime {
                     PythonCalls.Call(SharedContext, callable);
                 }
             } finally {
+#if FEATURE_BASIC_CONSOLE
                 if (PythonOptions.PerfStats) {
                     PerfTrack.DumpStats();
                 }
+#endif
             }
         }
 
@@ -1473,7 +1496,7 @@ namespace IronPython.Runtime {
         internal static string FormatPythonSyntaxError(SyntaxErrorException e) {
             string sourceLine = GetSourceLine(e);
 
-            if (!e.Data.Contains(_syntaxErrorNoCaret)) {
+            if (e.GetData(_syntaxErrorNoCaret) == null) {
                 return String.Format(
                     "  File \"{1}\", line {2}{0}" +
                     "    {3}{0}" +
@@ -1595,7 +1618,7 @@ namespace IronPython.Runtime {
             return PythonOps.GetDynamicStackFrames(exception);
         }
 
-#if SILVERLIGHT // stack trace
+#if !FEATURE_STACK_TRACE
         private string FormatStackTraces(Exception e) {
 
             StringBuilder result = new StringBuilder();
@@ -1829,6 +1852,7 @@ namespace IronPython.Runtime {
             if (ironPythonModules != null) {
                 LoadBuiltins(builtinTable, ironPythonModules, false);
 
+#if !WIN8
                 if (Environment.OSVersion.Platform == PlatformID.Unix) {
                     // we make our nt package show up as a posix package
                     // on unix platforms.  Because we build on top of the 
@@ -1839,6 +1863,7 @@ namespace IronPython.Runtime {
                     builtinTable["posix"] = builtinTable["nt"];
                     builtinTable.Remove("nt");
                 }
+#endif
             }
 
             return builtinTable;
@@ -1911,7 +1936,7 @@ namespace IronPython.Runtime {
         }
 
         internal void SetHostVariables(string prefix, string executable, string versionString) {
-            _initialVersionString = versionString;
+            _initialVersionString = !string.IsNullOrEmpty(versionString) ? versionString : GetVersionString();
             _initialExecutable = executable ?? "";
             _initialPrefix = prefix;
 
@@ -1930,23 +1955,43 @@ namespace IronPython.Runtime {
 
         internal void SetHostVariables(PythonDictionary dict) {
             dict["executable"] = _initialExecutable;
-            SystemState.__dict__["prefix"] =  _initialPrefix;
+            dict["prefix"] =  _initialPrefix;
             dict["exec_prefix"] = _initialPrefix;
-            SetVersionVariables(dict, 2, 7, 0, "beta", _initialVersionString);
+            SetVersionVariables(dict);
         }
 
-        private static void SetVersionVariables(PythonDictionary dict, byte major, byte minor, byte build, string level, string versionString) {
-            dict["hexversion"] = ((int)major << 24) + ((int)minor << 16) + ((int)build << 8);
-            dict["version_info"] = PythonTuple.MakeTuple((int)major, (int)minor, (int)build, level, 0);
-            dict["version"] = String.Format("{0}.{1}.{2} ({3})", major, minor, build, versionString);
+        private void SetVersionVariables(PythonDictionary dict) {
+            var implementation = new Implementation();
+            dict["implementation"] = implementation;
+            dict["version_info"] = implementation.version;
+            dict["hexversion"] = implementation.hexversion;
+            dict["version"] = implementation.version.GetVersionString(
+                    _initialVersionString ?? GetVersionString());
+        }
+
+        internal static string GetVersionString() {
+            string configuration = BuildInfo.IsDebug ? " DEBUG" : "";
+            string platform = Type.GetType("Mono.Runtime") == null ? ".NET" : "Mono";
+            string bitness = (IntPtr.Size * 8).ToString();
+
+            return String.Format("{0}{3} ({1}) on {4} {2} ({5}-bit)",
+                                PythonContext.IronPythonDisplayName,
+                                PythonContext.GetPythonVersion().ToString(),
+                                Environment.Version,
+                                configuration,
+                                platform,
+                                bitness
+                                );
         }
 
         private static string GetInitialPrefix() {
-#if !SILVERLIGHT
+#if FEATURE_ASSEMBLY_CODEBASE
             try {
                 return typeof(PythonContext).Assembly.CodeBase;
             } catch (SecurityException) {
                 // we don't have permissions to get paths...
+                return String.Empty;
+            } catch (MethodAccessException) {
                 return String.Empty;
             }
 #else
@@ -2888,7 +2933,7 @@ namespace IronPython.Runtime {
 
         internal static int Hash(object o) {
             if (o != null) {
-                switch (Type.GetTypeCode(o.GetType())) {
+                switch (o.GetType().GetTypeCode()) {
                     case TypeCode.Int32: return Int32Ops.__hash__((int)o);
                     case TypeCode.String: return ((string)o).GetHashCode();
                     case TypeCode.Double: return DoubleOps.__hash__((double)o);
@@ -3311,8 +3356,10 @@ namespace IronPython.Runtime {
             }
 
             CallSite<Func<CallSite, object, object, bool>> res;
-            if (!_equalSites.TryGetValue(type, out res)) {
-                _equalSites[type] = res = MakeEqualSite();
+            lock (_equalSites) { 
+                if (!_equalSites.TryGetValue(type, out res)) {
+                    _equalSites[type] = res = MakeEqualSite();
+                }
             }
 
             return res;

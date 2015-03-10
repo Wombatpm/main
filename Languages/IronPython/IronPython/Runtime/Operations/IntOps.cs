@@ -26,11 +26,11 @@ using Microsoft.Scripting.Utils;
 using IronPython.Modules;
 using IronPython.Runtime.Types;
 
-#if CLR2
+#if FEATURE_NUMERICS
+using System.Numerics;
+#else
 using Microsoft.Scripting.Math;
 using Complex = Microsoft.Scripting.Math.Complex64;
-#else
-using System.Numerics;
 #endif
 
 using SpecialNameAttribute = System.Runtime.CompilerServices.SpecialNameAttribute;
@@ -178,21 +178,20 @@ namespace IronPython.Runtime.Operations {
 
         [StaticExtensionMethod]
         public static object __new__(CodeContext/*!*/ context, PythonType cls, IList<byte> s) {
-            if (cls == TypeCache.Int32) {
-                object value;
-                IPythonObject po = s as IPythonObject;
-                if (po != null &&
-                    PythonTypeOps.TryInvokeUnaryOperator(DefaultContext.Default, po, "__int__", out value)) {
-                    return value;
-                }
-
-                return FastNew(context, s.MakeString());
+            object value;
+            IPythonObject po = s as IPythonObject;
+            if (po == null ||
+                !PythonTypeOps.TryInvokeUnaryOperator(DefaultContext.Default, po, "__int__", out value)) {
+                value = FastNew(context, s.MakeString());
             }
 
-            ValidateType(cls);
-
-            // derived int creation...
-            return cls.CreateInstance(context, FastNew(context, s.MakeString()));
+            if (cls == TypeCache.Int32) {
+                return value;
+            } else {
+                ValidateType(cls);
+                // derived int creation...
+                return cls.CreateInstance(context, value);
+            }
         }
 
         internal static string TrimRadix(string s, int radix) {
@@ -227,12 +226,15 @@ namespace IronPython.Runtime.Operations {
 
         [StaticExtensionMethod]
         public static object __new__(CodeContext context, PythonType cls, object x) {
-            if (cls == TypeCache.Int32) return FastNew(context, x); // TODO: Call site?
+            object value = FastNew(context, x);
+            if (cls == TypeCache.Int32) {
+                return value;
+            } else {
+                ValidateType(cls);
 
-            ValidateType(cls);
-
-            // derived int creation...
-            return cls.CreateInstance(context, x);
+                // derived int creation...
+                return cls.CreateInstance(context, value);
+            }
         }
 
         // "int()" calls ReflectedType.Call(), which calls "Activator.CreateInstance" and return directly.
@@ -422,9 +424,8 @@ namespace IronPython.Runtime.Operations {
 
         public static object __coerce__(CodeContext context, int x, object o) {
             // called via builtin.coerce()
-            int val;
-            if (Converter.TryConvertToInt32(o, out val)) {
-                return PythonTuple.MakeTuple(x, val);
+            if (o is int) {
+                return PythonTuple.MakeTuple(ScriptingRuntimeHelpers.Int32ToObject(x), o);
             }
             return NotImplementedType.Value;
         }

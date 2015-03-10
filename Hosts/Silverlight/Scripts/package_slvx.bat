@@ -51,6 +51,7 @@ echo DLR slvx files created
 echo Generating dlr.js
 
 "%DLR_ROOT%\Util\IronRuby\bin\ir.exe" %~dp0generate_dlrjs.rb 1> %~dp0generate_dlrjs.log 2>&1
+
 if "%ERRORLEVEL%" equ "0" (
   del %~dp0generate_dlrjs.log
   copy %~dp0dlr.js %build_path% 1> %~dp0copylog.log 2>&1

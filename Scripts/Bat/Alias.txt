@@ -70,6 +70,7 @@ bsipr3   =msbuild %DLR_ROOT%\Solutions\IronPython.sln /p:Configuration="Silverli
 ;= [Iron]Python program aliases
 ;=
 
+cpy     ="%DLR_ROOT%\External.LCA_RESTRICTED\Languages\CPython\27\python.exe" $*
 ipy     ="%DLR_ROOT%\Bin\Debug\ipy.exe" $*
 ipyr    ="%DLR_ROOT%\Bin\Release\ipy.exe" -X:TabCompletion $*
 ipyd    ="%DLR_ROOT%\Bin\Debug\ipy.exe" -D -X:TabCompletion $*
@@ -106,17 +107,15 @@ msir    =%windir%\system32\WindowsPowerShell\v1.0\powershell.exe measure-command
 ;= Chiron aliases
 ;=
 
-chd     ="%DLR_ROOT%\Bin\Silverlight3Debug\Chiron.exe" $*
-chr     ="%DLR_ROOT%\Bin\Silverlight3Release\Chiron.exe" $*
-chd4    ="%DLR_ROOT%\Bin\Silverlight4Debug\Chiron.exe" $*
-chr4    ="%DLR_ROOT%\Bin\Silverlight4Release\Chiron.exe" $*
+chd4    ="%DLR_ROOT%\Bin\Debug\Chiron.exe" $*
+chr4    ="%DLR_ROOT%\Bin\Release\Chiron.exe" $*
 
 ;==============================================================================
 ;= Miscellaneous utilities
 ;=
 
 n       =notepad.exe $*
-n2      =C:\Programs\notepad2.exe $*
+n2      ="%DLR_ROOT%\External\Tools\notepad2.exe" $*
 bc      ="%PROGRAM_FILES_32%\Beyond Compare 2\Bc2.exe" $*
 scite   =C:\programs\ruby\scite\scite.exe $*
 ps      =%windir%\system32\WindowsPowerShell\v1.0\powershell.exe $*

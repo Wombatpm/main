@@ -15,7 +15,7 @@
 
 using Microsoft.Scripting;
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using MSAst = System.Linq.Expressions;
 using System.Linq.Expressions;
 #else
@@ -273,7 +273,7 @@ namespace IronPython.Compiler.Ast {
                         infos[i] = ParameterMappingInfo.Parameter(i);
                     }
                     
-                    res = Expression.Dynamic(
+                    res = DynamicExpression.Dynamic(
                         GlobalParent.PyContext.BinaryOperationRetType(
                             binder,
                             GlobalParent.PyContext.Convert(
@@ -296,7 +296,7 @@ namespace IronPython.Compiler.Ast {
         }
 
         internal static bool CanAssign(Type/*!*/ to, Type/*!*/ from) {
-            return to.IsAssignableFrom(from) && (to.IsValueType == from.IsValueType);
+            return to.IsAssignableFrom(from) && (to.IsValueType() == from.IsValueType());
         }
 
         internal static MSAst.Expression/*!*/ ConvertIfNeeded(MSAst.Expression/*!*/ expression, Type/*!*/ type) {

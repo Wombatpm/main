@@ -22,7 +22,6 @@ using Microsoft.Scripting;
 using Microsoft.Scripting.Utils;
 using IronRuby.Runtime.Calls;
 using IronRuby.Runtime.Conversions;
-using System.Security.Permissions;
 using System.Runtime.Serialization;
 
 namespace IronRuby.Builtins {
@@ -143,12 +142,12 @@ namespace IronRuby.Builtins {
         public void RequireNotFrozen() {
             if ((_flags & IsFrozenFlag) != 0) {
                 // throw in a separate method to allow inlining of the current one
-                ThrowObjectFrozenException();
+                ThrowArrayFrozenException();
             }
         }
 
-        private static void ThrowObjectFrozenException() {
-            throw RubyExceptions.CreateObjectFrozenError();
+        private static void ThrowArrayFrozenException() {
+            throw RubyExceptions.CreateArrayFrozenError();
         }
 
         private void Mutate() {
@@ -603,7 +602,7 @@ namespace IronRuby.Builtins {
             return Array.IndexOf(_content, item, _start + startIndex, count);
         }
 
-#if !SILVERLIGHT // Array.FindIndex
+#if !SILVERLIGHT && !WP75 // TODO: replace by linq
         public int FindIndex(Predicate<object> match) {
             return FindIndex(0, _count, match);
         }

@@ -20,10 +20,10 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using IronRuby.Runtime;
 using Microsoft.Scripting.Generation;
 using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
+using IronRuby.Runtime;
 using IronRuby.Runtime.Calls;
 
 namespace IronRuby.Builtins {
@@ -588,6 +588,54 @@ namespace IronRuby.Builtins {
         #endregion
 
         #region TODO: min_by, max_by, minmax_by
+        
+        [RubyMethod("min_by")]
+        public static object GetMinBy(CallSiteStorage<EachSite>/*!*/ each, ComparisonStorage/*!*/ comparisonStorage, BlockParam comparer, object self) {
+			return GetExtremeBy(each, comparisonStorage, comparer, self, -1);
+		}
+
+        [RubyMethod("max_by")]
+        public static object GetMaxBy(CallSiteStorage<EachSite>/*!*/ each, ComparisonStorage/*!*/ comparisonStorage, BlockParam comparer, object self) {
+			return GetExtremeBy(each, comparisonStorage, comparer, self, +1);
+		}
+
+        private static object GetExtremeBy(CallSiteStorage<EachSite>/*!*/ each, ComparisonStorage/*!*/ comparisonStorage, BlockParam comparer, object self, int comparisonValue) {
+            
+            bool firstItem = true;
+            object result = null;
+            object resultValue = null;
+            
+            Each(each, self, Proc.Create(each.Context, delegate(BlockParam/*!*/ selfBlock, object _, object item) {
+                if (firstItem) {
+                    result = item;
+                    object firstBlockResult;
+                    comparer.Yield(item, out firstBlockResult);
+                    resultValue = firstBlockResult;
+                    firstItem = false;
+                    return null;
+                }
+                
+                object itemBlockResult;
+                comparer.Yield (item, out itemBlockResult);
+                object compareBlockResult = null;
+                int? compareResult = Protocols.Compare(comparisonStorage, itemBlockResult, resultValue);// CompareItems(comparisonStorage, itemBlockResult, resultValue, comparer, out compareBlockResult);
+                if (compareResult == null) {
+					result = item;
+                    resultValue = compareBlockResult;
+                    return selfBlock.PropagateFlow(comparer, compareBlockResult);
+                }
+                
+                // Check if we have found the new minimum or maximum (+1 to select max, -1 to select min)
+                if (compareResult == comparisonValue) {
+                    result = item;
+                    resultValue = itemBlockResult;
+                }
+                
+                return null;
+            }));
+            
+            return result;
+        }
 
         #endregion
 
@@ -681,16 +729,33 @@ namespace IronRuby.Builtins {
         #region zip
 
         [RubyMethod("zip")]
-        public static object Zip(CallSiteStorage<EachSite>/*!*/ each, BlockParam block, object self, [DefaultProtocol, NotNullItems]params IList/*!*/[]/*!*/ args) {
+        public static object Zip(CallSiteStorage<EachSite>/*!*/ each, ConversionStorage<IList>/*!*/ tryToAry, CallSiteStorage<EachSite>/*!*/ otherEach, BlockParam block, object self, [DefaultProtocol, NotNullItems] params object/*!*/[]/*!*/ args) {
             RubyArray results = (block == null) ? new RubyArray() : null;
             object result = results;
+
+            // coerce the args into arrays
+            var coercedArgs = new List<IList>(args.Length);
+            foreach (var otherArrayObject in args) {
+                IList otherArray = Protocols.TryCastToArray(tryToAry, otherArrayObject);
+                if (otherArray != null) {
+                    coercedArgs.Add(otherArray);
+                } else { // added in MRI 1.9.2 - if to_ary fails, try call .each to extract values
+                    otherArray = new List<object>();
+                    Each(otherEach, otherArrayObject, Proc.Create(otherEach.Context, delegate(BlockParam/*!*/ selfBlock, object _, object item) {
+                        otherArray.Add(item);
+                        return null;
+                    }));
+                    coercedArgs.Add(otherArray);
+                }
+            }
+
 
             int index = 0;
             Each(each, self, Proc.Create(each.Context, delegate(BlockParam/*!*/ selfBlock, object _, object item) {
                 // Collect items
                 RubyArray array = new RubyArray(args.Length + 1);
                 array.Add(item);
-                foreach (IList otherArray in args) {
+                foreach (var otherArray in coercedArgs) {
                     if (index < otherArray.Count) {
                         array.Add(otherArray[index]);
                     } else {
@@ -945,7 +1010,7 @@ namespace IronRuby.Builtins {
                 return null;
             }));
 
-            if (items == null) {
+            if (items == null || items.Count == 0) {
                 return result;
             }
 
@@ -1060,5 +1125,33 @@ namespace IronRuby.Builtins {
         // reverse_each
         // flat_map
         // join
+
+        [RubyMethod("group_by")]
+        public static Enumerator/*!*/ GetGroupByEnumerator(CallSiteStorage<EachSite>/*!*/ each, BlockParam/*!*/ predicate, object self) {
+            return new Enumerator((_, block) => GroupBy(each, block, self));
+        }
+
+        [RubyMethod("group_by")]
+        public static Hash GroupBy(CallSiteStorage<EachSite>/*!*/ each, [NotNull]BlockParam/*!*/ predicate, object self) {
+            var grouped = new Dictionary<object, object>();
+
+            Each(each, self, Proc.Create(each.Context, delegate(BlockParam/*!*/ selfBlock, object _, object item) {
+                object blockResult;
+                if (predicate.Yield(item, out blockResult)) {
+                    return selfBlock.PropagateFlow(predicate, blockResult);
+                }
+
+                RubyArray existingGroup = IDictionaryOps.GetElement(each.Context, grouped, blockResult) as RubyArray;
+                if (existingGroup != null) {
+                    existingGroup.Add(item);
+                } else {
+                    IDictionaryOps.SetElement(each.Context, grouped, blockResult, new RubyArray { item });
+                }
+
+                return null;
+            }));
+
+            return new Hash(grouped);
+        }
     }
 }

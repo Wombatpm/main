@@ -13,14 +13,19 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
+#if !WIN8
+using DynamicExpression = System.Linq.Expressions.Expression;
+#endif
 #else
-using dynamic = System.Object;
 using Microsoft.Scripting.Ast;
+using dynamic = System.Object;
+using DynamicExpression = Microsoft.Scripting.Ast.Expression;
 #endif
 
 using System;
+using System.Reflection;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.IO;
@@ -71,8 +76,36 @@ namespace Microsoft.Scripting.Runtime {
 
         #region Scope
 
+        /// <summary>
+        /// Gets the scope associated with a file, or null if none was available
+        /// </summary>
         public virtual Scope GetScope(string path) {
             return null;
+        }
+
+        /// <summary>
+        /// Creates a new ScriptScope using the default storage container
+        /// </summary>
+        public virtual Scope CreateScope() {
+            return new Scope();
+        }
+                
+        /// <summary>
+        /// Creates a new ScriptScope whose storage contains the provided dictionary of objects
+        /// 
+        /// Accesses to the ScriptScope will turn into get,set, and delete members against this dictionary
+        /// </summary>
+        public virtual Scope CreateScope(IDictionary<string, object> dictionary) {
+            return new Scope(dictionary);
+        }
+        
+        /// <summary>
+        /// Creates a new ScriptScope whose storage is an arbitrary object.
+        /// 
+        /// Accesses to the ScriptScope will turn into get, set, and delete members against the object.
+        /// </summary>
+        public virtual Scope CreateScope(IDynamicMetaObjectProvider storage) {
+            return new Scope(storage);
         }
 
         // TODO: remove
@@ -232,7 +265,7 @@ namespace Microsoft.Scripting.Runtime {
             return Options.SearchPaths;
         }
 
-#if !SILVERLIGHT
+#if FEATURE_CODEDOM
         // Convert a CodeDom to source code, and output the generated code and the line number mappings (if any)
         public virtual SourceUnit GenerateSourceCode(System.CodeDom.CodeObject codeDom, string path, SourceCodeKind kind) {
             throw new NotImplementedException();
@@ -379,7 +412,7 @@ namespace Microsoft.Scripting.Runtime {
             }
 
             public override DynamicMetaObject FallbackConvert(DynamicMetaObject self, DynamicMetaObject errorSuggestion) {
-                if (Type.IsAssignableFrom(self.LimitType)) {
+                if (Type.GetTypeInfo().IsAssignableFrom(self.LimitType.GetTypeInfo())) {
                     return new DynamicMetaObject(
                         Expression.Convert(self.Expression, Type),
                         BindingRestrictions.GetTypeRestriction(self.Expression, self.LimitType)
@@ -492,7 +525,7 @@ namespace Microsoft.Scripting.Runtime {
 
             public override DynamicMetaObject FallbackInvoke(DynamicMetaObject target, DynamicMetaObject[] args, DynamicMetaObject errorSuggestion) {
                 return new DynamicMetaObject(
-                    Expression.Dynamic(
+                    DynamicExpression.Dynamic(
                         _context.CreateInvokeBinder(CallInfo),
                         typeof(object),
                         GetArgs(target, args)
@@ -573,7 +606,7 @@ namespace Microsoft.Scripting.Runtime {
                 return false;
             }
 
-            return typeof(Delegate).IsAssignableFrom(obj.GetType());
+            return typeof(Delegate).GetTypeInfo().IsAssignableFrom(obj.GetType().GetTypeInfo());
         }
 
         #endregion

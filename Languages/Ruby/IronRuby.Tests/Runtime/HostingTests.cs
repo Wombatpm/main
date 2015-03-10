@@ -236,6 +236,7 @@ puts method_missing(:bar) rescue p $!
 ");
         }
 
+#if !WIN8
         public void RubyHosting2() {
             Hashtable hash = new Hashtable();
             hash.Add("foo", "bar");
@@ -254,6 +255,7 @@ puts h.foo
 bar
 ");
         }
+#endif
 
         public void RubyHosting3() {
             object value;
@@ -276,6 +278,7 @@ bar
             Assert(Runtime.Globals.TryGetVariable("E", out value));
             Assert(((RubyModule)value).Name == "E");
 
+#if FEATURE_FILESYSTEM
             // TODO:
             // the library paths are incorrect (not combined with location of .exe file) in partial trust:
             if (_driver.PartialTrust) return;
@@ -300,6 +303,7 @@ bar
             // standard library classes are also published (whether implemented in C# or not):
             var module = Runtime.Globals.GetVariable("Fcntl");
             Assert(module is RubyModule && ((RubyModule)module).Name == "Fcntl");
+#endif
         }
 
         public void RubyHosting4() {
@@ -554,6 +558,9 @@ C().foo()
         public void PythonInterop2() {
             if (!_driver.RunPython) return;
 
+            // TODO:
+            if (_driver.PartialTrust) return;
+
             var py = Runtime.GetEngine("python");
 
             py.Execute(@"
@@ -591,6 +598,9 @@ Python + Ruby
 
         public void PythonInterop4() {
             if (!_driver.RunPython) return;
+            
+            // TODO:
+            if (_driver.PartialTrust) return;
 
             var py = Runtime.GetEngine("python");
 
@@ -621,6 +631,9 @@ def get_python_class():
 
         public void PythonInterop5() {
             if (!_driver.RunPython) return;
+
+            // TODO:
+            if (_driver.PartialTrust) return;
 
             var py = Runtime.GetEngine("python");
 
@@ -825,13 +838,18 @@ p(~c)
 ");
         }
 
+        // TODO: this is broken in partial trust
+
         /// <summary>
         /// We convert a call to a setter with multiple parameters to a GetMember + SetIndex.
         /// This makes indexed properties on foreign meta-objects work.
         /// </summary>
         public void PythonInterop_NamedIndexers1() {
             if (!_driver.RunPython) return;
-            
+
+            // TODO: (partial trust) 
+            if (_driver.PartialTrust) return;
+
             var py = Runtime.GetEngine("python");
             ScriptScope scope = py.CreateScope();
             py.Execute(@"
@@ -859,6 +877,7 @@ c.send(:Foo=, 10, 11, 12)
 ");
         }
 
+#if !WIN8
         public void CustomTypeDescriptor1() {
             object cls = Engine.Execute(@"
 class C
@@ -915,5 +934,6 @@ end
             props[0].SetValue(obj, "abc");
             Assert(Engine.Operations.InvokeMember(obj, "a").Equals("abc"));
         }
+#endif
     }
 }

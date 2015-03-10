@@ -13,6 +13,8 @@
  *
  * ***************************************************************************/
 
+#if FEATURE_FULL_CRYPTO // MD5
+
 using System;
 using System.Collections.Generic;
 using Microsoft.Scripting.Runtime;
@@ -25,8 +27,6 @@ using IronPython.Runtime.Operations;
 //!!! hanging onto all of the bytes.
 //!!! Also, we could probably make a generic version of this that could then be specialized
 //!!! for both md5 and sha.
-
-#if !SILVERLIGHT // MD5
 
 [assembly: PythonModule("_md5", typeof(IronPython.Modules.PythonMD5))]
 namespace IronPython.Modules {
@@ -55,7 +55,17 @@ namespace IronPython.Modules {
 
         [Documentation("new([data]) -> object (new md5 object)")]
         public static MD5Type @new(Bytes data) {
+            return new MD5Type((IList<byte>)data);
+        }
+
+        [Documentation("new([data]) -> object (new md5 object)")]
+        public static MD5Type @new(PythonBuffer data) {
             return new MD5Type(data);
+        }
+
+        [Documentation("new([data]) -> object (new md5 object)")]
+        public static MD5Type @new(ByteArray data) {
+            return new MD5Type((IList<byte>)data);
         }
 
         [Documentation("new([data]) -> object (new md5 object)")]
@@ -101,6 +111,16 @@ namespace IronPython.Modules {
 
             [Documentation("update(bytes) -> None (update digest with string data)")]
             public void update(Bytes newData) {
+                update((IList<byte>)newData);
+            }
+
+            [Documentation("update(bytes) -> None (update digest with string data)")]
+            public void update(ByteArray newData) {
+                update((IList<byte>)newData);
+            }
+
+            [Documentation("update(bytes) -> None (update digest with string data)")]
+            public void update(PythonBuffer newData) {
                 update((IList<byte>)newData);
             }
 

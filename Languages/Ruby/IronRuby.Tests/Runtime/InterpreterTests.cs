@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using Microsoft.Scripting.Ast;
@@ -32,6 +32,7 @@ using System.Reflection;
 namespace IronRuby.Tests {
     using Ast = Expression;
     using AstUtils = Microsoft.Scripting.Ast.Utils;
+    using System.Reflection.Emit;
 
     public partial class Tests {
         #region Tracing Helpers
@@ -95,22 +96,22 @@ namespace IronRuby.Tests {
             object[] compiled, interpreted, sync;
             RunTraceTest(lambda, null, out compiled, out interpreted, out sync);
 
-            Console.WriteLine("-- compiled --");
+            Driver.Output.WriteLine("-- compiled --");
 
             foreach (var obj in compiled) {
-                Console.WriteLine(obj);
+                Driver.Output.WriteLine(obj);
             }
 
-            Console.WriteLine("-- interpreted --");
+            Driver.Output.WriteLine("-- interpreted --");
 
             foreach (var obj in interpreted) {
-                Console.WriteLine(obj);
+                Driver.Output.WriteLine(obj);
             }
 
-            Console.WriteLine("-- sync --");
+            Driver.Output.WriteLine("-- sync --");
 
             foreach (var obj in sync) {
-                Console.WriteLine(obj);
+                Driver.Output.WriteLine(obj);
             }
         }
 
@@ -118,10 +119,10 @@ namespace IronRuby.Tests {
 
         [Options(NoRuntime = true)]
         public void Interpreter1A() {
-            var m_AddValue = new Action<StrongBox<int>, int>(Interpreter1_AddValue).Method;
-            var m_ThrowNSE = new Action(Interpreter1_ThrowNSE).Method;
-            var m_f = new Func<int, int, int, int, int>(Interpreter1_f).Method;
-            var m_g = new Func<int, int, int, int>(Interpreter1_g).Method;
+            var m_AddValue = new Action<StrongBox<int>, int>(Interpreter1_AddValue).GetMethodInfo();
+            var m_ThrowNSE = new Action(Interpreter1_ThrowNSE).GetMethodInfo();
+            var m_f = new Func<int, int, int, int, int>(Interpreter1_f).GetMethodInfo();
+            var m_g = new Func<int, int, int, int>(Interpreter1_g).GetMethodInfo();
 
 
             var value = new StrongBox<int>(0);
@@ -282,6 +283,23 @@ namespace IronRuby.Tests {
             return 20;
         }
 
+#if !WIN8
+        [Options(NoRuntime = true)]
+        public void InterpreterNew() {
+            var p0 = Ast.Parameter(typeof(Type));
+            var p1 = Ast.Parameter(typeof(Type[]));
+
+            var l0 = Ast.Lambda<Func<Type, Type[], DynamicMethod>>(
+                Ast.New(typeof(DynamicMethod).GetConstructor(new[] { typeof(string), typeof(Type), typeof(Type[]) }),
+                    Ast.Constant("Foo"), p0, p1
+                ),
+                new[] { p0, p1 }
+            );
+
+            var f = l0.LightCompile();
+            var dm = f(typeof(int), new[] { typeof(int) });
+        }
+#endif
         [Options(NoRuntime = true)]
         public void Interpreter1B() {
             LabelTarget label = Ast.Label();
@@ -462,7 +480,7 @@ namespace IronRuby.Tests {
             var l1 = Ast.Lambda<Action>(
                 TraceCall(
                     Ast.TryCatch(
-                        Ast.Call(null, new Func<int>(ThrowNSEReturnInt).Method),
+                        Ast.Call(null, new Func<int>(ThrowNSEReturnInt).GetMethodInfo()),
                         Ast.Catch(typeof(Exception),
                             Ast.Block(
                                 Ast.Constant(2),
@@ -604,6 +622,7 @@ namespace IronRuby.Tests {
             Assert(comparer(fsc[1], fsi[1]));
         }
 
+#if !WIN8
         /// <summary>
         /// ThreadAbortException handling.
         /// </summary>
@@ -768,6 +787,7 @@ namespace IronRuby.Tests {
             Thread.ResetAbort();
             tracker.Add(e.ExceptionState);
         }
+#endif
 
         [Options(NoRuntime = true)]
         public void Interpreter5() {

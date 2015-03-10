@@ -27,10 +27,10 @@ using Microsoft.Scripting;
 using Microsoft.Scripting.Runtime;
 using Microsoft.Scripting.Utils;
 
-#if CLR2
-using Microsoft.Scripting.Math;
-#else
+#if FEATURE_NUMERICS
 using System.Numerics;
+#else
+using Microsoft.Scripting.Math;
 #endif
 
 namespace IronPython.Compiler {
@@ -570,11 +570,11 @@ namespace IronPython.Compiler {
         }
 
         private static bool IsNameStart(int ch) {
-            return Char.IsLetter((char)ch) || ch == '_';
+            return Char.IsLetter(unchecked((char)ch)) || ch == '_';
         }
 
         private static bool IsNamePart(int ch) {
-            return Char.IsLetterOrDigit((char)ch) || ch == '_';
+            return Char.IsLetterOrDigit(unchecked((char)ch)) || ch == '_';
         }
 
         private Token ReadString(char quote, bool isRaw, bool isUni, bool isBytes) {
@@ -1494,16 +1494,24 @@ namespace IronPython.Compiler {
         }
 
         internal static bool TryGetEncoding(Encoding defaultEncoding, string line, ref Encoding enc, out string encName) {
-            // encoding is "# coding: <encoding name>
-            // minimum length is 18
+            // PEP 0263 defines the following regex for the encoding line
+            // coding[:=]\s*([-\w.]+)
             encName = null;
+            int startIndex = 0;
             if (line.Length < 10) return false;
-            if (line[0] != '#') return false;
+            while (startIndex < line.Length) {
+                if (!Char.IsWhiteSpace (line[startIndex])) break;
+                
+                startIndex++;
+            }
+
+            if (startIndex == line.Length || line[startIndex] != '#') return false;
 
             // we have magic comment line
             int codingIndex;
             if ((codingIndex = line.IndexOf("coding")) == -1) return false;
             if (line.Length <= (codingIndex + 6)) return false;
+            // [:=]
             if (line[codingIndex + 6] != ':' && line[codingIndex + 6] != '=') return false;
 
             // it contains coding: or coding=
@@ -1518,8 +1526,9 @@ namespace IronPython.Compiler {
             if (encodingStart == line.Length) return false;
 
             int encodingEnd = encodingStart;
+            // ([-\w.]+)
             while (encodingEnd < line.Length) {
-                if (Char.IsWhiteSpace(line[encodingEnd])) break;
+                if (line[encodingEnd] != '-' && line[encodingEnd] != '.' && !Char.IsLetterOrDigit(line[encodingEnd])) break;
 
                 encodingEnd++;
             }
@@ -1529,7 +1538,7 @@ namespace IronPython.Compiler {
 
             // and we have the magic ending as well...
             if (StringOps.TryGetEncoding(encName, out enc)) {
-#if !SILVERLIGHT
+#if FEATURE_ENCODING
                 enc.DecoderFallback = new NonStrictDecoderFallback();
 #endif
                 return true;

@@ -12,6 +12,7 @@
  *
  *
  * ***************************************************************************/
+#if !FEATURE_READONLY_DICTIONARY
 
 using System;
 using System.Collections.Generic;
@@ -194,3 +195,4 @@ namespace Microsoft.Scripting.Utils {
         #endregion
     }
 }
+#endif

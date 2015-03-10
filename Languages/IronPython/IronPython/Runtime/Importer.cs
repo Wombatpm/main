@@ -228,7 +228,7 @@ namespace IronPython.Runtime {
                             // see http://www.python.org/doc/essays/packages.html "Dummy Entries"
                             context.LanguageContext.SystemStateModules[name] = null;
                         } else if (parentModule != null) {
-                            parentModule.__dict__[modName] = newmod;
+                            parentModule.__dict__[firstName] = newmod;
                         }
                         
                     } else if (firstDot == -1) {
@@ -265,12 +265,6 @@ namespace IronPython.Runtime {
                         return null;
                     }
                 }
-            }
-
-            // avoid allocating a bunch of strings if we can...
-            object ret;
-            if (bottom && TryGetExistingModule(context, modName, out ret)) {
-                return ret;
             }
 
             // now import the a.b.c etc.  a needs to be included here
@@ -738,8 +732,9 @@ namespace IronPython.Runtime {
 
         internal static PythonModule TryImportSourceFile(PythonContext/*!*/ context, string/*!*/ name) {
             var sourceUnit = TryFindSourceFile(context, name);
+            PlatformAdaptationLayer pal = context.DomainManager.Platform;
             if (sourceUnit == null ||
-                GetFullPathAndValidateCase(context, Path.Combine(Path.GetDirectoryName(sourceUnit.Path), name + Path.GetExtension(sourceUnit.Path)), false) == null) {
+                GetFullPathAndValidateCase(context, pal.CombinePaths(pal.GetDirectoryName(sourceUnit.Path), name + pal.GetExtension(sourceUnit.Path)), false) == null) {
                 return null;
             }
 
@@ -776,7 +771,7 @@ namespace IronPython.Runtime {
                     string fullPath;
 
                     try {
-                        fullPath = Path.Combine(directory, name + extension);
+                        fullPath = context.DomainManager.Platform.CombinePaths(directory, name + extension);
                     } catch (ArgumentException) {
                         // skip invalid paths
                         continue;
@@ -862,7 +857,7 @@ namespace IronPython.Runtime {
         private static object LoadFromDisk(CodeContext context, string name, string fullName, string str) {
             // default behavior
             PythonModule module;
-            string pathname = Path.Combine(str, name);
+            string pathname = context.LanguageContext.DomainManager.Platform.CombinePaths(str, name);
 
             module = LoadPackageFromSource(context, fullName, pathname);
             if (module != null) {
@@ -925,20 +920,20 @@ namespace IronPython.Runtime {
             // in Silverlight becauase there's no way to get the original filename.
 
             PlatformAdaptationLayer pal = context.DomainManager.Platform;
-            string dir = Path.GetDirectoryName(path);
+            string dir = pal.GetDirectoryName(path);
             if (!pal.DirectoryExists(dir)) {
                 return null;
             }
 
             try {
-                string file = Path.GetFileName(path);
+                string file = pal.GetFileName(path);
                 string[] files = pal.GetFileSystemEntries(dir, file, !isDir, isDir);
 
-                if (files.Length != 1 || Path.GetFileName(files[0]) != file) {
+                if (files.Length != 1 || pal.GetFileName(files[0]) != file) {
                     return null;
                 }
 
-                return Path.GetFullPath(files[0]);
+                return pal.GetFullPath(files[0]);
             } catch (IOException) {
                 return null;
             }
@@ -955,7 +950,7 @@ namespace IronPython.Runtime {
                 return null;
             }
 
-            return LoadModuleFromSource(context, name, Path.Combine(path, "__init__.py"));
+            return LoadModuleFromSource(context, name, context.LanguageContext.DomainManager.Platform.CombinePaths(path, "__init__.py"));
         }
 
         private static PythonModule/*!*/ LoadFromSourceUnit(CodeContext/*!*/ context, SourceUnit/*!*/ sourceCode, string/*!*/ name, string/*!*/ path) {

@@ -12,17 +12,16 @@
  *
  *
  * ***************************************************************************/
+#if FEATURE_FULL_CONSOLE
 
 using System;
 using System.IO;
-using System.Dynamic;
 using Microsoft.Scripting.Utils;
 using System.Threading;
 
 namespace Microsoft.Scripting.Hosting.Shell {
 
     public class BasicConsole : IConsole, IDisposable {
-
         private TextWriter _output;
         private TextWriter _errorOutput;
         private AutoResetEvent _ctrlCEvent;
@@ -54,9 +53,7 @@ namespace Microsoft.Scripting.Hosting.Shell {
             set { _creatingThread = value; }
         }
 
-#if !SILVERLIGHT // ConsoleCancelEventHandler
         public ConsoleCancelEventHandler ConsoleCancelEventHandler { get; set; }
-#endif
         private ConsoleColor _promptColor;
         private ConsoleColor _outColor;
         private ConsoleColor _errorColor;
@@ -69,7 +66,6 @@ namespace Microsoft.Scripting.Hosting.Shell {
 
             _creatingThread = Thread.CurrentThread;            
 
-#if !SILVERLIGHT // ConsoleCancelEventHandler
             // Create the default handler
             this.ConsoleCancelEventHandler = delegate(object sender, ConsoleCancelEventArgs e) {
                 if (e.SpecialKey == ConsoleSpecialKey.ControlC) {
@@ -86,7 +82,7 @@ namespace Microsoft.Scripting.Hosting.Shell {
                     this.ConsoleCancelEventHandler(sender, e);
                 }
             };
-#endif
+
             _ctrlCEvent = new AutoResetEvent(false);
         }
 
@@ -98,35 +94,53 @@ namespace Microsoft.Scripting.Hosting.Shell {
                 _errorColor = PickColor(ConsoleColor.Red, ConsoleColor.White);
                 _warningColor = PickColor(ConsoleColor.Yellow, ConsoleColor.White);
             } else {
-#if !SILVERLIGHT
                 _promptColor = _outColor = _errorColor = _warningColor = Console.ForegroundColor;
-#endif
             }
         }
 
         private static ConsoleColor PickColor(ConsoleColor best, ConsoleColor other) {
-#if SILVERLIGHT
-            return best;
-#else
+            best = IsDark(Console.BackgroundColor) ? MakeLight(best) : MakeDark(best);
+            other = IsDark(Console.BackgroundColor) ? MakeLight(other) : MakeDark(other);
+
             if (Console.BackgroundColor != best) {
                 return best;
             }
 
             return other;
-#endif
+        }
+
+        private static bool IsDark(ConsoleColor color) {
+            // The dark colours are < 8 and the light are > 8,
+            // but the two grays are a bit special
+            return color < ConsoleColor.Gray || color == ConsoleColor.DarkGray;
+        }
+
+        private static ConsoleColor MakeLight(ConsoleColor color) {
+            // DarkGray would stay dark gray, which would be hard to read on a dark background
+            if (color == ConsoleColor.DarkGray)
+                return ConsoleColor.White;
+
+            // The light colours all have their 8 bit set
+            return (ConsoleColor)(((int)color) | 0xF);
+        }
+
+        private static ConsoleColor MakeDark(ConsoleColor color) {
+            // Gray would stay gray, which would be hard to read on a light background
+            if (color == ConsoleColor.Gray)
+                return ConsoleColor.Black;
+
+            // The dark colours all have their 8 bit unset
+            return (ConsoleColor)(((int)color) & ~0xF);
         }
 
         protected void WriteColor(TextWriter output, string str, ConsoleColor c) {
-#if !SILVERLIGHT // Console.ForegroundColor
             ConsoleColor origColor = Console.ForegroundColor;
             Console.ForegroundColor = c;
-#endif
+      
             output.Write(str);
             output.Flush();
 
-#if !SILVERLIGHT // Console.ForegroundColor
             Console.ForegroundColor = origColor;
-#endif
         }
 
         #region IConsole Members
@@ -142,12 +156,7 @@ namespace Microsoft.Scripting.Hosting.Shell {
                 // delay when shutting down the process via ctrl-z, but it's
                 // not really perceptible.  In the ctrl-C case we will return
                 // as soon as the event is signaled.
-#if SILVERLIGHT
-                if (_ctrlCEvent != null && _ctrlCEvent.WaitOne(100))
-#else
-                if (_ctrlCEvent != null && _ctrlCEvent.WaitOne(100, false))
-#endif
- {
+                if (_ctrlCEvent != null && _ctrlCEvent.WaitOne(100, false)) {
                     // received ctrl-C
                     return "";
                 } else {
@@ -189,6 +198,6 @@ namespace Microsoft.Scripting.Hosting.Shell {
 
         #endregion
     }
-
 }
 
+#endif

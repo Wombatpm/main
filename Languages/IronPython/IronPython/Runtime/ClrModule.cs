@@ -12,6 +12,18 @@
  *
  *
  * ***************************************************************************/
+#if FEATURE_SERIALIZATION
+using System.Runtime.Serialization.Formatters.Binary;
+#endif
+
+#if !FEATURE_REMOTING
+using MarshalByRefObject = System.Object;
+#endif
+
+#if FEATURE_COM
+using ComTypeLibInfo = Microsoft.Scripting.ComInterop.ComTypeLibInfo;
+using ComTypeLibDesc = Microsoft.Scripting.ComInterop.ComTypeLibDesc;
+#endif
 
 using System;
 using System.Collections;
@@ -21,7 +33,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Xml;
 
 using Microsoft.Scripting;
 using Microsoft.Scripting.Actions;
@@ -33,12 +44,6 @@ using IronPython.Runtime;
 using IronPython.Runtime.Exceptions;
 using IronPython.Runtime.Operations;
 using IronPython.Runtime.Types;
-
-#if !SILVERLIGHT
-using ComTypeLibInfo = Microsoft.Scripting.ComInterop.ComTypeLibInfo;
-using ComTypeLibDesc = Microsoft.Scripting.ComInterop.ComTypeLibDesc;
-using System.Runtime.Serialization.Formatters.Binary;
-#endif
 
 [assembly: PythonModule("clr", typeof(IronPython.Runtime.ClrModule))]
 namespace IronPython.Runtime {
@@ -108,8 +113,188 @@ import Namespace.")]
             }
         }
 
-#if !SILVERLIGHT // files, paths
+#if !SILVERLIGHT
+        [Documentation(@"Adds a reference to a .NET assembly.  Parameters are a partial assembly name. 
+After the load the assemblies namespaces and top-level types will be available via 
+import Namespace.")]
+        public static void AddReferenceByPartialName(CodeContext/*!*/ context, params string[] names) {
+            if (names == null) throw new TypeErrorException("Expected string, got NoneType");
+            if (names.Length == 0) throw new ValueErrorException("Expected at least one name, got none");
+            ContractUtils.RequiresNotNull(context, "context");
 
+            foreach (string name in names) {
+                AddReferenceByPartialName(context, name);
+            }
+        }
+#endif
+
+#if FEATURE_FILESYSTEM
+        [Documentation(@"Adds a reference to a .NET assembly.  Parameters are a full path to an. 
+assembly on disk. After the load the assemblies namespaces and top-level types 
+will be available via import Namespace.")]
+        public static Assembly/*!*/ LoadAssemblyFromFileWithPath(CodeContext/*!*/ context, string/*!*/ file) {
+            if (file == null) throw new TypeErrorException("LoadAssemblyFromFileWithPath: arg 1 must be a string.");
+            
+            Assembly res;
+            if (!context.LanguageContext.TryLoadAssemblyFromFileWithPath(file, out res)) {
+                if (!Path.IsPathRooted(file)) {
+                    throw new ValueErrorException("LoadAssemblyFromFileWithPath: path must be rooted");
+                } else if (!File.Exists(file)) {
+                    throw new ValueErrorException("LoadAssemblyFromFileWithPath: file not found");
+                } else {
+                    throw new ValueErrorException("LoadAssemblyFromFileWithPath: error loading assembly");
+                }
+            }
+            return res;
+        }
+
+        [Documentation(@"Loads an assembly from the specified filename and returns the assembly
+object.  Namespaces or types in the assembly can be accessed directly from 
+the assembly object.")]
+        public static Assembly/*!*/ LoadAssemblyFromFile(CodeContext/*!*/ context, string/*!*/ file) {
+            if (file == null) throw new TypeErrorException("Expected string, got NoneType");
+            if (file.Length == 0) throw new ValueErrorException("assembly name must not be empty string");
+            ContractUtils.RequiresNotNull(context, "context");
+
+            if (file.IndexOf(System.IO.Path.DirectorySeparatorChar) != -1) {
+                throw new ValueErrorException("filenames must not contain full paths, first add the path to sys.path");
+            }
+
+            return context.LanguageContext.LoadAssemblyFromFile(file);
+        }
+#endif
+
+#if FEATURE_LOADWITHPARTIALNAME
+        [Documentation(@"Loads an assembly from the specified partial assembly name and returns the 
+assembly object.  Namespaces or types in the assembly can be accessed directly 
+from the assembly object.")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2001:AvoidCallingProblematicMethods", MessageId = "System.Reflection.Assembly.LoadWithPartialName")]
+        public static Assembly/*!*/ LoadAssemblyByPartialName(string/*!*/ name) {
+            if (name == null) {
+                throw new TypeErrorException("LoadAssemblyByPartialName: arg 1 must be a string");
+            }
+
+#pragma warning disable 618, 612 // csc
+            return Assembly.LoadWithPartialName(name);
+#pragma warning restore 618, 612
+        }
+#endif
+        [Documentation(@"Loads an assembly from the specified assembly name and returns the assembly
+object.  Namespaces or types in the assembly can be accessed directly from 
+the assembly object.")]
+        public static Assembly/*!*/ LoadAssemblyByName(CodeContext/*!*/ context, string/*!*/ name) {
+            if (name == null) {
+                throw new TypeErrorException("LoadAssemblyByName: arg 1 must be a string");
+            }
+
+            return PythonContext.GetContext(context).DomainManager.Platform.LoadAssembly(name);
+        }
+
+        /// <summary>
+        /// Use(name) -> module
+        /// 
+        /// Attempts to load the specified module searching all languages in the loaded ScriptRuntime.
+        /// </summary>
+        public static object Use(CodeContext/*!*/ context, string/*!*/ name) {
+            ContractUtils.RequiresNotNull(context, "context");
+
+            if (name == null) {
+                throw new TypeErrorException("Use: arg 1 must be a string");
+            }
+
+            var scope = Importer.TryImportSourceFile(PythonContext.GetContext(context), name);
+            if (scope == null) {
+                throw new ValueErrorException(String.Format("couldn't find module {0} to use", name));
+            }
+            return scope;
+        }
+
+        [Documentation("Converts an array of bytes to a string.")]
+        public static string GetString(byte[] bytes) {
+            return GetString(bytes, bytes.Length);
+        }
+
+        [Documentation("Converts maxCount of an array of bytes to a string")]
+        public static string GetString(byte[] bytes, int maxCount) {
+            int bytesToCopy = Math.Min(bytes.Length, maxCount);            
+            return Encoding.GetEncoding("iso-8859-1").GetString(bytes, 0, bytesToCopy);
+        }
+
+        [Documentation("Converts a string to an array of bytes")]
+        public static byte[] GetBytes(string s) {
+            return GetBytes(s, s.Length);
+        }
+
+        [Documentation("Converts maxCount of a string to an array of bytes")]
+        public static byte[] GetBytes(string s, int maxCount) {
+            int charsToCopy = Math.Min(s.Length, maxCount);
+            byte[] ret = new byte[charsToCopy];
+            Encoding.GetEncoding("iso-8859-1").GetBytes(s, 0, charsToCopy, ret, 0);
+            return ret;
+        }
+
+        /// <summary>
+        /// Use(path, language) -> module
+        /// 
+        /// Attempts to load the specified module belonging to a specific language loaded into the
+        /// current ScriptRuntime.
+        /// </summary>
+        public static object/*!*/ Use(CodeContext/*!*/ context, string/*!*/ path, string/*!*/ language) {
+            ContractUtils.RequiresNotNull(context, "context");
+
+            if (path == null) {
+                throw new TypeErrorException("Use: arg 1 must be a string");
+            }
+
+            if (language == null) {
+                throw new TypeErrorException("Use: arg 2 must be a string");
+            }
+
+            var manager = context.LanguageContext.DomainManager;
+            if (!manager.Platform.FileExists(path)) {
+                throw new ValueErrorException(String.Format("couldn't load module at path '{0}' in language '{1}'", path, language));
+            }
+
+            var sourceUnit = manager.GetLanguageByName(language).CreateFileUnit(path);
+            return Importer.ExecuteSourceUnit(context.LanguageContext, sourceUnit);
+        }
+
+        /// <summary>
+        /// SetCommandDispatcher(commandDispatcher)
+        /// 
+        /// Sets the current command dispatcher for the Python command line.  
+        /// 
+        /// The command dispatcher will be called with a delegate to be executed.  The command dispatcher
+        /// should invoke the target delegate in the desired context.
+        /// 
+        /// A common use for this is to enable running all REPL commands on the UI thread while the REPL
+        /// continues to run on a non-UI thread.
+        /// </summary>
+        public static Action<Action> SetCommandDispatcher(CodeContext/*!*/ context, Action<Action> dispatcher) {
+            ContractUtils.RequiresNotNull(context, "context");
+
+            return ((PythonContext)context.LanguageContext).GetSetCommandDispatcher(dispatcher);
+        }
+
+        public static void ImportExtensions(CodeContext/*!*/ context, PythonType type) {
+            if (type == null) {
+                throw PythonOps.TypeError("type must not be None");
+            } else if (!type.IsSystemType) {
+                throw PythonOps.ValueError("type must be .NET type");
+            }
+
+            lock (context.ModuleContext) {
+                context.ModuleContext.ExtensionMethods = ExtensionMethodSet.AddType(context.LanguageContext, context.ModuleContext.ExtensionMethods, type);
+            }
+        }
+
+        public static void ImportExtensions(CodeContext/*!*/ context, [NotNull]NamespaceTracker @namespace) {
+            lock (context.ModuleContext) {
+                context.ModuleContext.ExtensionMethods = ExtensionMethodSet.AddNamespace(context.LanguageContext, context.ModuleContext.ExtensionMethods, @namespace);
+            }
+        }
+
+#if FEATURE_COM
         /// <summary>
         /// LoadTypeLibrary(rcw) -> type lib desc
         /// 
@@ -156,170 +341,10 @@ import Namespace.")]
             PublishTypeLibDesc(context, typeLibInfo.TypeLibDesc);
         }
 
-        [Documentation(@"Adds a reference to a .NET assembly.  Parameters are a partial assembly name. 
-After the load the assemblies namespaces and top-level types will be available via 
-import Namespace.")]
-        public static void AddReferenceByPartialName(CodeContext/*!*/ context, params string[] names) {
-            if (names == null) throw new TypeErrorException("Expected string, got NoneType");
-            if (names.Length == 0) throw new ValueErrorException("Expected at least one name, got none");
-            ContractUtils.RequiresNotNull(context, "context");
-
-            foreach (string name in names) {
-                AddReferenceByPartialName(context, name);
-            }
-        }
-
-        [Documentation(@"Adds a reference to a .NET assembly.  Parameters are a full path to an. 
-assembly on disk. After the load the assemblies namespaces and top-level types 
-will be available via import Namespace.")]
-#if CLR2
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2001:AvoidCallingProblematicMethods", MessageId = "System.Reflection.Assembly.LoadFile")]
-        public static Assembly/*!*/ LoadAssemblyFromFileWithPath(string/*!*/ file) {
-            if (file == null) throw new TypeErrorException("LoadAssemblyFromFileWithPath: arg 1 must be a string.");
-            // We use Assembly.LoadFile instead of Assembly.LoadFrom as the latter first tries to use Assembly.Load
-            return Assembly.LoadFile(file);
-        }
-#else
-        public static Assembly/*!*/ LoadAssemblyFromFileWithPath(CodeContext/*!*/ context, string/*!*/ file) {
-            if (file == null) throw new TypeErrorException("LoadAssemblyFromFileWithPath: arg 1 must be a string.");
-            
-            Assembly res;
-            if (!context.LanguageContext.TryLoadAssemblyFromFileWithPath(file, out res)) {
-                if (!Path.IsPathRooted(file)) {
-                    throw new ValueErrorException("LoadAssemblyFromFileWithPath: path must be rooted");
-                } else if (!File.Exists(file)) {
-                    throw new ValueErrorException("LoadAssemblyFromFileWithPath: file not found");
-                } else {
-                    throw new ValueErrorException("LoadAssemblyFromFileWithPath: error loading assembly");
-                }
-            }
-            return res;
+        private static void PublishTypeLibDesc(CodeContext context, ComTypeLibDesc typeLibDesc) {
+            PythonOps.ScopeSetMember(context, context.LanguageContext.DomainManager.Globals, typeLibDesc.Name, typeLibDesc);
         }
 #endif
-
-        [Documentation(@"Loads an assembly from the specified filename and returns the assembly
-object.  Namespaces or types in the assembly can be accessed directly from 
-the assembly object.")]
-        public static Assembly/*!*/ LoadAssemblyFromFile(CodeContext/*!*/ context, string/*!*/ file) {
-            if (file == null) throw new TypeErrorException("Expected string, got NoneType");
-            if (file.Length == 0) throw new ValueErrorException("assembly name must not be empty string");
-            ContractUtils.RequiresNotNull(context, "context");
-
-            if (file.IndexOf(System.IO.Path.DirectorySeparatorChar) != -1) {
-                throw new ValueErrorException("filenames must not contain full paths, first add the path to sys.path");
-            }
-
-            return context.LanguageContext.LoadAssemblyFromFile(file);
-        }
-
-        [Documentation(@"Loads an assembly from the specified partial assembly name and returns the 
-assembly object.  Namespaces or types in the assembly can be accessed directly 
-from the assembly object.")]
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2001:AvoidCallingProblematicMethods", MessageId = "System.Reflection.Assembly.LoadWithPartialName")]
-        public static Assembly/*!*/ LoadAssemblyByPartialName(string/*!*/ name) {
-            if (name == null) {
-                throw new TypeErrorException("LoadAssemblyByPartialName: arg 1 must be a string");
-            }
-
-#pragma warning disable 618 // csc
-#pragma warning disable 612 // gmcs
-            return Assembly.LoadWithPartialName(name);
-#pragma warning restore 618
-#pragma warning restore 612
-        }
-#endif
-
-        [Documentation(@"Loads an assembly from the specified assembly name and returns the assembly
-object.  Namespaces or types in the assembly can be accessed directly from 
-the assembly object.")]
-        public static Assembly/*!*/ LoadAssemblyByName(CodeContext/*!*/ context, string/*!*/ name) {
-            if (name == null) {
-                throw new TypeErrorException("LoadAssemblyByName: arg 1 must be a string");
-            }
-
-            return PythonContext.GetContext(context).DomainManager.Platform.LoadAssembly(name);
-        }
-
-        /// <summary>
-        /// Use(name) -> module
-        /// 
-        /// Attempts to load the specified module searching all languages in the loaded ScriptRuntime.
-        /// </summary>
-        public static object Use(CodeContext/*!*/ context, string/*!*/ name) {
-            ContractUtils.RequiresNotNull(context, "context");
-
-            if (name == null) {
-                throw new TypeErrorException("Use: arg 1 must be a string");
-            }
-
-            var scope = Importer.TryImportSourceFile(PythonContext.GetContext(context), name);
-            if (scope == null) {
-                throw new ValueErrorException(String.Format("couldn't find module {0} to use", name));
-            }
-            return scope;
-        }
-
-        /// <summary>
-        /// Use(path, language) -> module
-        /// 
-        /// Attempts to load the specified module belonging to a specific language loaded into the
-        /// current ScriptRuntime.
-        /// </summary>
-        public static object/*!*/ Use(CodeContext/*!*/ context, string/*!*/ path, string/*!*/ language) {
-            ContractUtils.RequiresNotNull(context, "context");
-
-            if (path == null) {
-                throw new TypeErrorException("Use: arg 1 must be a string");
-            }
-
-            if (language == null) {
-                throw new TypeErrorException("Use: arg 2 must be a string");
-            }
-
-            var manager = context.LanguageContext.DomainManager;
-            if (!manager.Platform.FileExists(path)) {
-                throw new ValueErrorException(String.Format("couldn't load module at path '{0}' in language '{1}'", path, language));
-            }
-
-            var sourceUnit = manager.GetLanguageByName(language).CreateFileUnit(path);
-            return Importer.ExecuteSourceUnit(context.LanguageContext, sourceUnit);
-        }
-
-        /// <summary>
-        /// SetCommandDispatcher(commandDispatcher)
-        /// 
-        /// Sets the current command dispatcher for the Python command line.  
-        /// 
-        /// The command dispatcher will be called with a delegate to be executed.  The command dispatcher
-        /// should invoke the target delegate in the desired context.
-        /// 
-        /// A common use for this is to enable running all REPL commands on the UI thread while the REPL
-        /// continues to run on a non-UI thread.
-        /// </summary>
-        public static Action<Action> SetCommandDispatcher(CodeContext/*!*/ context, Action<Action> dispatcher) {
-            ContractUtils.RequiresNotNull(context, "context");
-
-            return ((PythonContext)context.LanguageContext).GetSetCommandDispatcher(dispatcher);
-        }
-
-
-        public static void ImportExtensions(CodeContext/*!*/ context, PythonType type) {
-            if (type == null) {
-                throw PythonOps.TypeError("type must not be None");
-            } else if (!type.IsSystemType) {
-                throw PythonOps.ValueError("type must be .NET type");
-            }
-
-            lock (context.ModuleContext) {
-                context.ModuleContext.ExtensionMethods = ExtensionMethodSet.AddType(context.LanguageContext, context.ModuleContext.ExtensionMethods, type);
-            }
-        }
-
-        public static void ImportExtensions(CodeContext/*!*/ context, [NotNull]NamespaceTracker @namespace) {
-            lock (context.ModuleContext) {
-                context.ModuleContext.ExtensionMethods = ExtensionMethodSet.AddNamespace(context.LanguageContext, context.ModuleContext.ExtensionMethods, @namespace);
-            }
-        }
 
         #endregion
 
@@ -358,7 +383,7 @@ the assembly object.")]
             // note we don't explicit call to get the file version
             // here because the assembly resolve event will do it for us.
 
-#if !SILVERLIGHT // files, paths
+#if FEATURE_LOADWITHPARTIALNAME
             if (asm == null) {
                 asm = LoadAssemblyByPartialName(name);
             }
@@ -373,7 +398,7 @@ the assembly object.")]
         private static void AddReferenceToFile(CodeContext/*!*/ context, string file) {
             if (file == null) throw new TypeErrorException("Expected string, got NoneType");
 
-#if SILVERLIGHT
+#if !FEATURE_FILESYSTEM
             Assembly asm = context.LanguageContext.DomainManager.Platform.LoadAssemblyFromPath(file);
 #else
             Assembly asm = LoadAssemblyFromFile(context, file);
@@ -385,7 +410,7 @@ the assembly object.")]
             AddReference(context, asm);
         }
 
-#if !SILVERLIGHT // files, paths
+#if FEATURE_LOADWITHPARTIALNAME
         private static void AddReferenceByPartialName(CodeContext/*!*/ context, string name) {
             if (name == null) throw new TypeErrorException("Expected string, got NoneType");
             ContractUtils.RequiresNotNull(context, "context");
@@ -396,10 +421,6 @@ the assembly object.")]
             }
 
             AddReference(context, asm);
-        }
-
-        private static void PublishTypeLibDesc(CodeContext context, ComTypeLibDesc typeLibDesc) {
-            PythonOps.ScopeSetMember(context, context.LanguageContext.DomainManager.Globals, typeLibDesc.Name, typeLibDesc);
         }
 #endif
         private static void AddReferenceByName(CodeContext/*!*/ context, string name) {
@@ -454,8 +475,8 @@ the assembly object.")]
         private static PythonType _strongBoxType;
 
         #region Runtime Type Checking support
-#if !SILVERLIGHT // files, paths
 
+#if FEATURE_FILESYSTEM
         [Documentation(@"Adds a reference to a .NET assembly.  One or more assembly names can
 be provided which are fully qualified names to the file on disk.  The 
 directory is added to sys.path and AddReferenceToFile is then called. After the 
@@ -793,6 +814,7 @@ import Namespace.")]
             return Converter.Convert(o, toType);
         }
 
+#if FEATURE_FILESYSTEM && FEATURE_REFEMIT
         /// <summary>
         /// Provides a helper for compiling a group of modules into a single assembly.  The assembly can later be
         /// reloaded using the clr.AddReference API.
@@ -804,7 +826,7 @@ import Namespace.")]
             PythonContext pc = PythonContext.GetContext(context);
 
             for (int i = 0; i < filenames.Length; i++) {
-                filenames[i] = Path.GetFullPath(filenames[i]);
+                filenames[i] = pc.DomainManager.Platform.GetFullPath(filenames[i]);
             }
 
             Dictionary<string, string> packageMap = BuildPackageMap(filenames);
@@ -872,7 +894,9 @@ import Namespace.")]
 
             SavableScriptCode.SaveToAssembly(assemblyName, code.ToArray());
         }
+#endif
 
+#if FEATURE_REFEMIT
         /// <summary>
         /// clr.CompileSubclassTypes(assemblyName, *typeDescription)
         /// 
@@ -910,6 +934,7 @@ import Namespace.")]
 
             NewTypeMaker.SaveNewTypes(assemblyName, typesToCreate);
         }
+#endif
 
         /// <summary>
         /// clr.GetSubclassedTypes() -> tuple
@@ -928,11 +953,11 @@ import Namespace.")]
                 Type clrBaseType = info.BaseType;
                 Type tempType = clrBaseType;
                 while (tempType != null) {
-                    if (tempType.IsGenericType && tempType.GetGenericTypeDefinition() == typeof(Extensible<>)) {
+                    if (tempType.IsGenericType() && tempType.GetGenericTypeDefinition() == typeof(Extensible<>)) {
                         clrBaseType = tempType.GetGenericArguments()[0];
                         break;
                     }
-                    tempType = tempType.BaseType;
+                    tempType = tempType.GetBaseType();
                 }
 
                 PythonType baseType = DynamicHelpers.GetPythonTypeFromType(clrBaseType);
@@ -979,11 +1004,7 @@ import Namespace.")]
             }
 
             [Serializable]
-            private class PALHolder
-#if !SILVERLIGHT
- : MarshalByRefObject
-#endif
- {
+            private class PALHolder : MarshalByRefObject {
                 [NonSerialized]
                 private readonly PlatformAdaptationLayer _pal;
 
@@ -1085,7 +1106,7 @@ import Namespace.")]
             po.EnableProfiler = enable;
         }
 
-#if !SILVERLIGHT
+#if FEATURE_SERIALIZATION
         /// <summary>
         /// Serializes data using the .NET serialization formatter for complex
         /// types.  Returns a tuple identifying the serialization format and the serialized 
@@ -1101,7 +1122,7 @@ import Namespace.")]
             }
 
             string data, format;
-            switch (Type.GetTypeCode(CompilerHelpers.GetType(self))) {
+            switch (CompilerHelpers.GetType(self).GetTypeCode()) {
                 // for the primitive non-python types just do a simple
                 // serialization
                 case TypeCode.Byte:
@@ -1118,6 +1139,7 @@ import Namespace.")]
                     data = self.ToString();
                     format = CompilerHelpers.GetType(self).FullName;
                     break;
+
                 default:
                     // something more complex, let the binary formatter handle it                    
                     BinaryFormatter bf = new BinaryFormatter();

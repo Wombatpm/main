@@ -15,8 +15,8 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.Contracts;
 using SRC = System.Runtime.CompilerServices;
+using Microsoft.Scripting.Utils;
 
 namespace Microsoft.Scripting.Runtime {    
     public static class IdDispenser {
@@ -30,7 +30,7 @@ namespace Microsoft.Scripting.Runtime {
         [MultiRuntimeAware]
         private static long _currentId = 42; // Last unique Id we have given out.
 
-#if !SILVERLIGHT // GC.CollectionCount
+#if !SILVERLIGHT && !WIN8 && !WP75 // GC.CollectionCount
         // cleanupId and cleanupGC are used for efficient scheduling of hashtable cleanups
         [MultiRuntimeAware]
         private static long _cleanupId; // currentId at the time of last cleanup
@@ -67,7 +67,7 @@ namespace Microsoft.Scripting.Runtime {
 
                 long uniqueId = checked(++_currentId);
 
-#if !SILVERLIGHT // GC.CollectionCount
+#if !SILVERLIGHT && !WIN8 && !WP75 // GC.CollectionCount
                 long change = uniqueId - _cleanupId;
 
                 // Cleanup the table if it is a while since we have done it last time.
@@ -129,9 +129,10 @@ namespace Microsoft.Scripting.Runtime {
             private long _id;
 
             public Wrapper(Object obj, long uniqueId) {
-                _weakReference = new WeakReference(obj, true);
+                // CF throws doesn't support long weak references (NotSuportedException is thrown)
+                _weakReference = new WeakReference(obj, !PlatformAdaptationLayer.IsCompactFramework);
 
-                _hashCode = (obj == null) ? 0 : SRC.RuntimeHelpers.GetHashCode(obj);
+                _hashCode = (obj == null) ? 0 : ReferenceEqualityComparer<object>.Instance.GetHashCode(obj);
                 _id = uniqueId;
             }
 
@@ -147,7 +148,6 @@ namespace Microsoft.Scripting.Runtime {
                 }
             }
 
-            [Confined]
             public override int GetHashCode() {
                 return _hashCode;
             }
@@ -181,7 +181,7 @@ namespace Microsoft.Scripting.Runtime {
 
             private static int GetHashCodeWorker(object o) {
                 if (o == null) return 0;
-                return SRC.RuntimeHelpers.GetHashCode(o);
+                return ReferenceEqualityComparer<object>.Instance.GetHashCode(o);
             }
         }
 

@@ -1,3 +1,4 @@
+# -*- coding: iso-8859-1 -*-
 #####################################################################################
 #
 #  Copyright (c) Microsoft Corporation. All rights reserved.
@@ -220,6 +221,9 @@ def test_get_set_locale():
     loc = locale.getlocale(locale.LC_ALL)
     AreEqual(loc, (None,None))
 
+    Assert(locale.setlocale(locale.LC_ALL, '') != None)
+    Assert(locale.getlocale() != None)
+
 def test_cp17819():
     import xml.sax
     AreEqual(xml.sax._false, 0)
@@ -245,6 +249,11 @@ def test_cp21929():
              os.listdir(os.getcwd()))
     if is_cpython: #http://ironpython.codeplex.com/workitem/28207
         AssertError(WindowsError, os.listdir, "")
+
+def test_cp34188():
+    import locale
+    locale.setlocale(locale.LC_COLLATE,"de_CH")
+    Assert(sorted([u'a', u'z', u'ä'], cmp=locale.strcoll) == sorted([u'a', u'z', u'ä'], key=locale.strxfrm))
     
 ##MAIN#########################################################################
 run_test(__name__)

@@ -13,7 +13,7 @@
  *
  * ***************************************************************************/
 
-#if !CLR2
+#if FEATURE_CORE_DLR
 using System.Linq.Expressions;
 #else
 using Microsoft.Scripting.Ast;
@@ -87,8 +87,8 @@ namespace IronPython.Runtime.Binding {
         public bool MaybeNotImplemented {
             get {
                 if (_function != null) {
-                    ParameterInfo ret = _function.Overload.ReturnParameter;
-                    return ret != null && ret.IsDefined(typeof(MaybeNotImplementedAttribute), false);
+                    var method = _function.Overload.ReflectionInfo as MethodInfo;
+                    return method != null && method.ReturnTypeCustomAttributes.IsDefined(typeof(MaybeNotImplementedAttribute), false);
                 }
 
                 return true;
@@ -186,7 +186,7 @@ namespace IronPython.Runtime.Binding {
                                     types[0].Expression
                                 )
                             ),
-                            Ast.Dynamic(
+                            DynamicExpression.Dynamic(
                                 state.Invoke(
                                     new CallSignature(args.Length)
                                 ),
